@@ -1,33 +1,70 @@
-# Groepsquiz
+# Dhondjes Quiz
 
-Een live quiz in de stijl van Kahoot: de host toont de vragen op een groot scherm,
-spelers doen mee op hun eigen toestel met een spelcode.
+Een live quiz in chaletstijl: de host toont de vragen op een groot scherm,
+spelers doen mee op hun gsm met een code.
+
+## Hoe het werkt
+
+1. Open `host.html` op het toestel dat op het grote scherm getoond wordt en klik op **Open de quiz**
+   (die klik zet ook het geluid aan).
+2. Er verschijnt een code van 6 cijfers. Spelers gaan op hun gsm naar de site (`index.html`),
+   geven eerst de code in en daarna hun naam.
+3. De namen verschijnen op het grote scherm. Klik op een naam om ze te wijzigen of te verwijderen.
+4. Klik op **Start**, kies een ronde en speel.
+
+Per vraag: **Toon antwoord** → **Stand** → **Volgende vraag**.
+Spatie, Enter of pijltje rechts doet hetzelfde als de knop rechtsonder.
 
 ## Bestanden
 
 | Bestand | Wat het doet |
 | --- | --- |
-| `index.html` | Scherm voor spelers (meedoen, groep kiezen, antwoorden) |
-| `host.html` | Scherm voor de host (lobby, groepen, rondes, ranglijst) |
-| `js/quiz-data.js` | **De vragen**: levels > onderwerpen > vragen |
+| `index.html` | Scherm voor spelers (gsm) |
+| `host.html` | Het grote scherm van de host |
+| `js/quiz-data.js` | **De vragen**, per ronde |
 | `js/firebase-config.js` | **Je Firebase-gegevens** |
-| `js/store.js` | Verbinding met Firebase (of demo-modus) |
-| `js/host.js`, `js/player.js`, `js/common.js` | Spellogica |
-| `css/style.css` | Opmaak |
+| `css/style.css` | Het thema (kleuren, plaketten, animaties) |
+| `js/sfx.js`, `js/fx.js` | Geluidseffecten en visuele effecten |
+| `js/host.js`, `js/player.js`, `js/common.js`, `js/store.js` | Spellogica en verbinding |
 | `media/` | Foto's, video's en geluid voor de vragen |
+| `media/maps/` | Kaarten voor de locatievragen |
 | `database.rules.json` | Regels voor de Firebase-database |
 
-## Meteen testen (demo-modus, zonder Firebase)
+## Achtergrondfoto
+
+Zet je eigen foto in de map `media` met de naam **`achtergrond.jpg`**.
+Ze wordt dan automatisch als achtergrond gebruikt op alle schermen.
+Zonder foto zie je een getekende haardvuur-achtergrond.
+
+## Soorten vragen
+
+Alles staat in `js/quiz-data.js`; bovenaan dat bestand staat de volledige uitleg.
+
+| type | Wat de speler doet |
+| --- | --- |
+| `choice` | Meerkeuze (2 tot 4 antwoorden) |
+| `text` | Zelf typen; alle antwoorden verschijnen op het grote scherm. Met `scramble` wordt het een letterpuzzel. |
+| `number` | Een getal raden; hoe dichter, hoe meer punten |
+| `location` | Een plek aanduiden op de kaart (`belgie` of `europa`) |
+| `order` | Dingen in de juiste volgorde zetten |
+
+Elke vraag heeft een timer (`duration`, standaard 25 seconden) en kan een foto, video of
+geluid tonen met `media: { type: 'image', src: 'media/foto.jpg' }`.
+
+Bij getypte antwoorden kan de host na de onthulling op een antwoord klikken om het
+toch goed (of fout) te rekenen.
+
+## Punten
+
+- Juist antwoord: 500 punten + tot 500 extra voor snelheid.
+- Getal, locatie en volgorde geven ook punten als je er dichtbij zit.
+- Groepsscore = gemiddelde van de leden (eerlijk bij ongelijke groepen).
+
+## Testen zonder Firebase (demo-modus)
 
 Zolang `js/firebase-config.js` niet is ingevuld, werkt alles tussen tabbladen van
-dezelfde browser.
-
-1. Open `host.html` in een tabblad.
-2. Open `index.html` in een paar andere tabbladen en doe mee met de code.
-   Elk tabblad is een aparte speler.
-
-Werkt het niet door dubbel te klikken op het bestand? Start dan een lokale server
-in deze map (`python3 -m http.server`) en ga naar `http://localhost:8000/host.html`.
+dezelfde browser: open `host.html` in één tabblad en `index.html` in een paar andere.
+Elk tabblad is een aparte speler.
 
 ## Firebase koppelen (om echt online te spelen)
 
@@ -38,34 +75,17 @@ in deze map (`python3 -m http.server`) en ga naar `http://localhost:8000/host.ht
 5. Plak die in `js/firebase-config.js` als `window.FIREBASE_CONFIG = { ... };`.
    Controleer dat `databaseURL` erin staat.
 
-De oranje balk "Demo-modus" verdwijnt zodra de config is ingevuld.
-
 > De regels in `database.rules.json` laten iedereen met een spelcode lezen en schrijven.
 > Prima om te testen; later maken we dit strenger.
 
+### Meer dan 99 spelers
+
+Het gratis Firebase-plan (Spark) laat 100 toestellen tegelijk toe, de host inbegrepen.
+Daarom staat de limiet op 99 spelers (`MAX_PLAYERS` in `js/common.js`).
+Voor meer spelers schakel je het Firebase-project over naar het Blaze-plan en verhoog je dat getal.
+
 ## Online zetten met GitHub Pages
 
-1. Zet alle bestanden in een GitHub-repository (met `index.html` in de hoofdmap).
-2. **Settings > Pages > Deploy from a branch**, kies `main` en `/ (root)`.
-3. Spelers gaan naar `https://<gebruikersnaam>.github.io/<repo>/`,
+1. **Settings > Pages > Deploy from a branch**, kies `main` en `/ (root)`.
+2. Spelers gaan naar `https://<gebruikersnaam>.github.io/<repo>/`,
    de host naar `.../host.html`.
-
-## Vragen aanpassen
-
-Alles staat in `js/quiz-data.js`. Een vraag ziet er zo uit:
-
-```js
-{
-  text: 'Welke vorm zie je op de afbeelding?',
-  media: { type: 'image', src: 'media/voorbeeld.svg' },   // optioneel: image, video of audio
-  options: ['Vierkant', 'Ster', 'Cirkel', 'Driehoek'],    // 2 tot 4 antwoorden
-  correct: 1,                                             // 0 = eerste antwoord
-  duration: 15                                            // seconden (standaard 20)
-}
-```
-
-## Spelregels
-
-- Juist antwoord: 500 punten + tot 500 extra voor snelheid.
-- Groepsscore = gemiddelde van de leden (eerlijk bij ongelijke groepen).
-- Maximaal 50 spelers per spel (`MAX_PLAYERS` in `js/common.js`).

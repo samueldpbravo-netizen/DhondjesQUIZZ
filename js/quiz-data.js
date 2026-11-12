@@ -1,124 +1,202 @@
 // ---------------------------------------------------------------
 //  DE INHOUD VAN DE QUIZ
 // ---------------------------------------------------------------
-//  Structuur:  quiz  >  levels  >  onderwerpen  >  vragen
+//  De quiz bestaat uit rondes; elke ronde heeft vragen.
 //
-//  Elke vraag:
+//  Soorten vragen (type):
+//
+//   'choice'    meerkeuze
+//               options: ['A', 'B', 'C', 'D'], correct: 1   (0 = eerste)
+//
+//   'text'      zelf typen; alle antwoorden verschijnen op het grote scherm
+//               answers: ['Namen', 'Namur']   (alle goedgekeurde antwoorden;
+//               hoofdletters, accenten en kleine typfouten maken niet uit)
+//               scramble: 'PRETWANNE'         (optioneel: letterpuzzel)
+//
+//   'number'    een getal raden; hoe dichter, hoe meer punten
+//               correct: 1830, tolerance: 50  (verder dan 50 ernaast = 0 punten)
+//               unit: 'meter'                 (optioneel)
+//
+//   'location'  een plek aanduiden op de kaart
+//               map: 'belgie' of 'europa', lat: 51.21, lon: 3.22, label: 'Brugge'
+//
+//   'order'     dingen in de juiste volgorde zetten
+//               items: [...]  in de JUISTE volgorde (worden vanzelf door elkaar gehaald)
+//               hint: 'van noord naar zuid'
+//
+//  Voor elke vraag:
 //    text      de vraag
-//    options   2 tot 4 antwoorden
-//    correct   index van het juiste antwoord (0 = eerste)
-//    duration  aantal seconden (optioneel, standaard 20)
+//    duration  aantal seconden (standaard 25)
 //    media     optioneel: { type: 'image' | 'video' | 'audio', src: 'media/bestand.jpg' }
-//              Zet de bestanden in de map "media".
 //
 //  Dit bestand wordt alleen door het host-scherm geladen.
 // ---------------------------------------------------------------
 
 window.QUIZ = {
-  title: 'Mijn Groepsquiz',
-  levels: [
+  title: 'Dhondjes Quiz',
+  rounds: [
     {
-      id: 'level1',
-      name: 'Level 1 – Makkelijk',
-      topics: [
+      id: 'algemeen',
+      name: 'Algemene kennis',
+      questions: [
         {
-          id: 'algemeen',
-          name: 'Algemene kennis',
-          questions: [
-            {
-              text: 'Hoeveel dagen heeft een schrikkeljaar?',
-              options: ['364', '365', '366', '367'],
-              correct: 2,
-              duration: 15
-            },
-            {
-              text: 'Welke vorm zie je op de afbeelding?',
-              media: { type: 'image', src: 'media/voorbeeld.svg' },
-              options: ['Vierkant', 'Ster', 'Cirkel', 'Driehoek'],
-              correct: 1,
-              duration: 15
-            },
-            {
-              text: 'Wat is de hoofdstad van België?',
-              options: ['Antwerpen', 'Gent', 'Brussel', 'Luik'],
-              correct: 2,
-              duration: 15
-            }
-          ]
+          type: 'choice',
+          text: 'Hoeveel provincies telt België?',
+          options: ['8', '9', '10', '11'],
+          correct: 2,
+          duration: 20
         },
         {
-          id: 'dieren',
-          name: 'Dieren',
-          questions: [
-            {
-              text: 'Welk dier is het grootste op aarde?',
-              options: ['Olifant', 'Blauwe vinvis', 'Giraf', 'Witte haai'],
-              correct: 1
-            },
-            {
-              text: 'Hoeveel poten heeft een spin?',
-              options: ['6', '8', '10', '12'],
-              correct: 1
-            },
-            {
-              text: 'Een pinguïn kan vliegen.',
-              options: ['Waar', 'Niet waar'],
-              correct: 1,
-              duration: 10
-            }
-          ]
+          type: 'text',
+          text: 'Wat is de hoofdstad van Wallonië?',
+          answers: ['Namen', 'Namur'],
+          duration: 30
+        },
+        {
+          type: 'location',
+          text: 'Waar ligt Brugge?',
+          map: 'belgie',
+          lat: 51.2093,
+          lon: 3.2247,
+          label: 'Brugge',
+          duration: 25
+        },
+        {
+          type: 'number',
+          text: 'In welk jaar werd België onafhankelijk?',
+          correct: 1830,
+          tolerance: 50,
+          duration: 25
+        },
+        {
+          type: 'choice',
+          text: 'Welke Belgische striptekenaar bedacht Kuifje?',
+          options: ['Willy Vandersteen', 'Hergé', 'Peyo', 'Morris'],
+          correct: 1,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welke planeet is de grootste van ons zonnestelsel?',
+          options: ['Saturnus', 'Aarde', 'Neptunus', 'Jupiter'],
+          correct: 3,
+          duration: 20
+        },
+        {
+          type: 'text',
+          text: 'Hoe heet het beroemde plassende beeldje in Brussel?',
+          answers: ['Manneken Pis', 'Manneke Pis', 'Mannekenpis', 'Mannekepis'],
+          duration: 30
+        },
+        {
+          type: 'order',
+          text: 'Zet deze steden in de juiste volgorde.',
+          hint: 'van noord naar zuid',
+          items: ['Antwerpen', 'Brussel', 'Namen', 'Aarlen'],
+          duration: 35
+        },
+        {
+          type: 'number',
+          text: 'Hoeveel bollen heeft het Atomium?',
+          correct: 9,
+          tolerance: 5,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welke taal is géén officiële taal van België?',
+          options: ['Nederlands', 'Duits', 'Engels', 'Frans'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          type: 'location',
+          text: 'Waar ligt Rome?',
+          map: 'europa',
+          lat: 41.9028,
+          lon: 12.4964,
+          label: 'Rome',
+          duration: 25
+        },
+        {
+          type: 'choice',
+          text: 'Wat is de chemische formule van water?',
+          options: ['CO₂', 'H₂O', 'O₂', 'NaCl'],
+          correct: 1,
+          duration: 20
+        },
+        {
+          type: 'text',
+          text: 'Welke Belgische wielrenner kreeg de bijnaam "De Kannibaal"?',
+          answers: ['Eddy Merckx', 'Merckx', 'Eddie Merckx', 'Eddy Merkx', 'Merkx'],
+          duration: 30
+        },
+        {
+          type: 'number',
+          text: 'Hoeveel kilometer lang is de Belgische kust ongeveer?',
+          correct: 67,
+          tolerance: 40,
+          unit: 'km',
+          duration: 25
+        },
+        {
+          type: 'choice',
+          text: 'Welke stad staat bekend als de diamanthoofdstad van de wereld?',
+          options: ['Antwerpen', 'Brussel', 'Gent', 'Luik'],
+          correct: 0,
+          duration: 20
+        },
+        {
+          type: 'location',
+          text: 'Waar ligt het hoogste punt van België?',
+          map: 'belgie',
+          lat: 50.5014,
+          lon: 6.0931,
+          label: 'Signaal van Botrange (694 m)',
+          duration: 25
+        },
+        {
+          type: 'choice',
+          text: 'Waar of niet waar: een tomaat is een vrucht.',
+          options: ['Waar', 'Niet waar'],
+          correct: 0,
+          duration: 15
+        },
+        {
+          type: 'text',
+          text: 'Letterpuzzel: welke Belgische stad zit hier verstopt?',
+          scramble: 'PRETWANNE',
+          answers: ['Antwerpen'],
+          duration: 40
+        },
+        {
+          type: 'choice',
+          text: 'Welke Belgische schilder maakte "Ceci n\'est pas une pipe"?',
+          options: ['Peter Paul Rubens', 'James Ensor', 'René Magritte', 'Jan van Eyck'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          type: 'order',
+          text: 'Zet deze gebeurtenissen in de juiste volgorde.',
+          hint: 'van oud naar nieuw',
+          items: ['Slag bij Waterloo', 'België wordt onafhankelijk', 'Expo 58 in Brussel', 'Eerste eurobiljetten'],
+          duration: 40
         }
       ]
     },
     {
-      id: 'level2',
-      name: 'Level 2 – Moeilijk',
-      topics: [
-        {
-          id: 'wetenschap',
-          name: 'Wetenschap',
-          questions: [
-            {
-              text: 'Wat is het chemische symbool voor goud?',
-              options: ['Go', 'Ag', 'Au', 'Gd'],
-              correct: 2
-            },
-            {
-              text: 'Welke planeet staat het dichtst bij de zon?',
-              options: ['Venus', 'Mars', 'Aarde', 'Mercurius'],
-              correct: 3
-            },
-            {
-              text: 'Hoeveel botten heeft een volwassen mens ongeveer?',
-              options: ['106', '206', '306', '406'],
-              correct: 1
-            }
-          ]
-        },
-        {
-          id: 'geschiedenis',
-          name: 'Geschiedenis',
-          questions: [
-            {
-              text: 'In welk jaar viel de Berlijnse Muur?',
-              options: ['1979', '1985', '1989', '1991'],
-              correct: 2
-            },
-            {
-              text: 'Wie schilderde de Mona Lisa?',
-              options: ['Michelangelo', 'Leonardo da Vinci', 'Rembrandt', 'Picasso'],
-              correct: 1
-            }
-            // Voorbeeld met video:
-            // {
-            //   text: 'Wat gebeurt er in deze video?',
-            //   media: { type: 'video', src: 'media/mijn-video.mp4' },
-            //   options: ['A', 'B', 'C', 'D'],
-            //   correct: 0,
-            //   duration: 30
-            // }
-          ]
-        }
+      id: 'familie',
+      name: 'Familie',
+      questions: [
+        // Hier komen de familievragen.
+      ]
+    },
+    {
+      id: 'special',
+      name: 'Special Round',
+      questions: [
+        // Hier komen de puzzels, spelletjes en grappige video's.
       ]
     }
   ]
