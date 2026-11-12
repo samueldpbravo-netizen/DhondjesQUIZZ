@@ -104,6 +104,41 @@ function buildMap(mapId, pins) {
   (pins || []).forEach((p, i) => box.append(mapPin(mapId, p, i)));
   return box;
 }
+// Een kaart uit een gewone afbeelding (verstoppertje). Speldjes in procenten: [{x, y, cls, label}]
+function buildImageMap(src, pins) {
+  const img = h('img', { src, alt: '', draggable: false });
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = MAPS.belgie.src; // nog geen eigen kaart: gebruik de kaart van België
+  };
+  const box = h('div', { class: 'map' }, img);
+  (pins || []).forEach((p, i) => box.append(pctPin(p, i)));
+  return box;
+}
+function pctPin(p, i) {
+  return h(
+    'div',
+    { class: 'pin ' + (p.cls || ''), style: `left:${p.x}%;top:${p.y}%;animation-delay:${Math.min(i || 0, 40) * 40}ms` },
+    p.label ? h('span', { class: 'pin-label' }, p.label) : null
+  );
+}
+
+// Tijd als m:ss
+function clock(sec) {
+  sec = Math.max(0, Math.ceil(sec));
+  return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+}
+
+// Vast willekeurig getal tussen 0 en 1 op basis van een tekst (voor vaste posities).
+function hash01(str, salt) {
+  let x = 2166136261 ^ (salt || 0);
+  for (let i = 0; i < str.length; i++) x = Math.imul(x ^ str.charCodeAt(i), 16777619);
+  x ^= x >>> 13;
+  x = Math.imul(x, 0x5bd1e995);
+  x ^= x >>> 15;
+  return (x >>> 0) / 4294967296;
+}
+
 function mapPin(mapId, p, i) {
   const pos = mapToPct(mapId, p.lat, p.lon);
   return h(
@@ -151,6 +186,7 @@ function judgeAnswer(q, v) {
   if (v == null) return { frac: 0 };
   switch (q.type || 'choice') {
     case 'choice':
+    case 'who':
       return { frac: v === q.correct ? 1 : 0 };
     case 'text':
       return { frac: textMatches(v, q.answers) ? 1 : 0 };
@@ -175,11 +211,13 @@ function judgeAnswer(q, v) {
   return { frac: 0 };
 }
 
-// Punten: tot 500 voor juistheid + tot 500 voor snelheid, maal hoe juist het was.
-function calcPoints(frac, ms, durationSec) {
+// Punten: de helft voor juistheid + de helft voor snelheid, maal hoe juist het was.
+// max = het maximum voor deze vraag (standaard 1000).
+function calcPoints(frac, ms, durationSec, max) {
   if (frac <= 0) return 0;
+  max = max || 1000;
   const t = Math.min(1, Math.max(0, ms / (durationSec * 1000)));
-  return Math.round(frac * (500 + 500 * (1 - t)));
+  return Math.round(frac * (max / 2 + (max / 2) * (1 - t)));
 }
 
 // Het juiste antwoord als tekst (voor het spelerscherm).
@@ -196,6 +234,8 @@ function solutionText(question, sol) {
       return sol.label;
     case 'order':
       return sol.items.join(' → ');
+    case 'who':
+      return sol.name;
   }
   return '';
 }

@@ -2,13 +2,14 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Geen in- of uitzoomen: nodig om blokken te kunnen slepen in de IQ-test -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#170c07">
   <title>Quiz – Meedoen</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body class="player">
   <div class="bg"></div><div class="glow"></div><div class="vignette"></div>
@@ -79,6 +80,17 @@
       <div id="qStatus" class="status" hidden></div>
     </section>
 
+    <!-- SPELLETJES -->
+    <section id="v-game" class="view" hidden>
+      <div class="qtop">
+        <div class="plaque counter"><span class="plaque-text" id="gName"></span></div>
+        <div class="plaque timer" id="gTimerBox" hidden><span class="plaque-text" id="gTimer"></span></div>
+      </div>
+      <h2 id="gTitle" class="game-title"></h2>
+      <p class="hint" id="gSub"></p>
+      <div id="gBody"></div>
+    </section>
+
     <!-- RESULTAAT -->
     <section id="v-result" class="view center" hidden>
       <p id="resultTitle" class="result-title"></p>
@@ -103,11 +115,14 @@
     <p>Maak je klaar…</p>
   </div>
 
-  <script src="js/firebase-config.js?v=3"></script>
-  <script src="js/store.js?v=3"></script>
-  <script src="js/sfx.js?v=3"></script>
-  <script src="js/fx.js?v=3"></script>
-  <script src="js/common.js?v=3"></script>
-  <script src="js/player.js?v=3"></script>
+  <script src="js/firebase-config.js?v=4"></script>
+  <script src="js/store.js?v=4"></script>
+  <script src="js/sfx.js?v=4"></script>
+  <script src="js/fx.js?v=4"></script>
+  <script src="js/scene.js?v=4"></script>
+  <script src="js/common.js?v=4"></script>
+  <script src="js/iq-puzzles.js?v=4"></script>
+  <script src="js/iq-game.js?v=4"></script>
+  <script src="js/player.js?v=4"></script>
 </body>
 </html>

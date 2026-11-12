@@ -84,6 +84,111 @@
     tone(freq * 3.01, at, dur * 0.3, (vol || 0.18) * 0.15, 'sine');
   }
 
+
+  // ---------- Muziek ----------
+  // Een klein jazzcombo dat zichzelf speelt: lopende bas, bekkens, piano-akkoorden
+  // en af en toe een melodietje. Alles wordt per achtste noot ingepland.
+  let music = null;
+  let bus = null;
+  const QUAL = { m7: [0, 3, 7, 10], 7: [0, 4, 7, 10], M7: [0, 4, 7, 11], m: [0, 3, 7, 12] };
+  const MODES = {
+    lounge: { bpm: 88, swing: true, vol: 1, prog: [[38, 'm7'], [43, '7'], [36, 'M7'], [33, '7']] },
+    tense: { bpm: 118, swing: false, vol: 0.9, prog: [[38, 'm'], [38, 'm'], [34, 'M7'], [33, '7']] }
+  };
+  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+  function stopMusic() {
+    if (!music) return;
+    clearInterval(music.timer);
+    music = null;
+  }
+
+  function mTone(freq, at, dur, vol, type) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(bus);
+    o.start(at);
+    o.stop(at + dur + 0.05);
+  }
+  let hatBuf = null;
+  function mHat(at, dur, vol, freq) {
+    if (!hatBuf) hatBuf = noiseBuffer(0.4);
+    const src = ctx.createBufferSource();
+    src.buffer = hatBuf;
+    const f = ctx.createBiquadFilter();
+    f.type = freq ? 'bandpass' : 'highpass';
+    f.frequency.value = freq || 7000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    src.connect(f).connect(g).connect(bus);
+    src.start(at);
+    src.stop(at + dur + 0.02);
+  }
+
+  function schedule() {
+    if (!music || !ctx) return;
+    if (ctx.state !== 'running') {
+      music.next = 0;
+      return;
+    }
+    if (!bus) {
+      bus = ctx.createGain();
+      bus.gain.value = 0.55;
+      bus.connect(master);
+    }
+    const M = MODES[music.mode];
+    const beat = 60 / M.bpm;
+    if (music.next < ctx.currentTime) music.next = ctx.currentTime + 0.08;
+    while (music.next < ctx.currentTime + 0.3) {
+      playStep(M, music.step, music.next, beat);
+      const even = music.step % 2 === 0;
+      music.next += M.swing ? beat * (even ? 0.64 : 0.36) : beat / 2;
+      music.step++;
+    }
+  }
+
+  function playStep(M, step, at, beat) {
+    const bar = Math.floor(step / 8) % M.prog.length;
+    const pos = step % 8;
+    const [root, q] = M.prog[bar];
+    const iv = QUAL[q];
+    const nextRoot = M.prog[(bar + 1) % M.prog.length][0];
+    const v = M.vol;
+    if (M.swing) {
+      // lopende bas op elke tel
+      if (pos % 2 === 0) {
+        const walk = [root, root + iv[1], root + iv[2], nextRoot + (Math.random() < 0.5 ? 1 : -1)];
+        mTone(hz(walk[pos / 2]), at, beat * 0.95, 0.2 * v, 'triangle');
+      }
+      // bekken: ding, ding-a-ding
+      if ([0, 2, 3, 4, 6, 7].includes(pos)) mHat(at, 0.09, pos % 2 ? 0.02 : 0.035);
+      // piano-akkoord
+      if ((pos === 0 || pos === 3) && Math.random() < 0.8) {
+        iv.forEach((n, i) => mTone(hz(root + 24 + n), at + i * 0.012, beat * 1.3, 0.035 * v, 'sine'));
+      }
+      // melodie
+      if (Math.random() < 0.28) {
+        const pool = [...iv, 14, 12 + iv[1]];
+        const n = root + 36 + pool[Math.floor(Math.random() * pool.length)];
+        mTone(hz(n), at, beat * 0.9, 0.05 * v, 'sine');
+        mTone(hz(n) * 2, at, beat * 0.3, 0.012 * v, 'sine');
+      }
+    } else {
+      // stuwende bas op elke achtste
+      mTone(hz(root + (pos % 2 ? 12 : 0)), at, beat * 0.42, 0.17 * v, 'triangle');
+      mHat(at, 0.05, pos % 2 ? 0.018 : 0.03);
+      if (pos === 2 || pos === 6) mHat(at, 0.12, 0.05, 1800);
+      if (pos === 0 || pos === 5) iv.slice(0, 3).forEach((n) => mTone(hz(root + 24 + n), at, beat * 0.5, 0.03 * v, 'sine'));
+      if (Math.random() < 0.14) mTone(hz(root + 36 + iv[Math.floor(Math.random() * 3)]), at, beat * 0.6, 0.04 * v, 'sine');
+    }
+  }
+
   const N = { C4: 261.6, D4: 293.7, E4: 329.6, F4: 349.2, G4: 392, A4: 440, B4: 493.9, C5: 523.3, D5: 587.3, E5: 659.3, G5: 784, A5: 880, C6: 1046.5 };
 
   const SFX = {
@@ -164,38 +269,34 @@
       tone(65.4, 1.36, 1.8, 0.3, 'sine');
     },
 
-    // Knetterend haardvuur als achtergrond
+    // Zacht geknetter van het haardvuur (alleen de vonkjes, geen ruis)
     fireOn() {
       const c = ac();
       if (!c || fire) return;
-      const src = c.createBufferSource();
-      src.buffer = noiseBuffer(4, true);
-      src.loop = true;
-      const lp = c.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 500;
-      const g = c.createGain();
-      g.gain.value = 0.22;
-      src.connect(lp).connect(g).connect(master);
-      src.start();
       const crackle = () => {
         if (!fire) return;
-        if (c.state === 'running') {
-          const n = 1 + Math.floor(Math.random() * 3);
-          for (let i = 0; i < n; i++) noise(Math.random() * 0.25, 0.02 + Math.random() * 0.03, 0.05 + Math.random() * 0.12, 1500 + Math.random() * 3500, 4);
+        if (c.state === 'running' && Math.random() < 0.6) {
+          noise(Math.random() * 0.2, 0.02 + Math.random() * 0.03, 0.03 + Math.random() * 0.05, 1500 + Math.random() * 3500, 4);
         }
-        fire.timer = setTimeout(crackle, 120 + Math.random() * 700);
+        fire.timer = setTimeout(crackle, 250 + Math.random() * 1100);
       };
-      fire = { src, timer: null };
+      fire = { timer: null };
       crackle();
     },
     fireOff() {
       if (!fire) return;
       clearTimeout(fire.timer);
-      try {
-        fire.src.stop();
-      } catch (e) {}
       fire = null;
+    },
+
+    // Achtergrondmuziek: 'lounge' = rustige jazz, 'tense' = spannender tijdens vragen
+    music(mode) {
+      if (!mode) return stopMusic();
+      if (music && music.mode === mode) return;
+      stopMusic();
+      const c = ac();
+      if (!c) return;
+      music = { mode, step: 0, next: 0, timer: setInterval(schedule, 70) };
     },
 
     get muted() {

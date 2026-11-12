@@ -1,9 +1,18 @@
 // ---------------------------------------------------------------
 //  DE INHOUD VAN DE QUIZ
 // ---------------------------------------------------------------
-//  De quiz bestaat uit rondes; elke ronde heeft vragen.
+//  De quiz bestaat uit rondes. Elke ronde heeft een soort (kind):
 //
-//  Soorten vragen (type):
+//   'quiz'   gewone vragen (zie hieronder)
+//   'whois'  Wie is het? Iedereen schrijft een hint over zichzelf, de rest raadt wie het is.
+//   'teams'  Teamspel: iedereen kiest een team, de host duidt het winnende team aan.
+//   'hide'   Verstoppertje op de kaart.
+//   'iq'     IQ-test: 5 minuten puzzels oplossen, alleen of in een groepje.
+//            De puzzels zelf staan in js/iq-puzzles.js.
+//
+//  Punten tellen altijd bij; er gaan nooit punten af.
+//
+//  ---- Soorten vragen in een 'quiz'-ronde (type) ----
 //
 //   'choice'    meerkeuze
 //               options: ['A', 'B', 'C', 'D'], correct: 1   (0 = eerste)
@@ -35,9 +44,12 @@
 window.QUIZ = {
   title: 'Dhondjes Quiz',
   rounds: [
+    // ===================== RONDE 1 =====================
     {
       id: 'algemeen',
+      kind: 'quiz',
       name: 'Algemene kennis',
+      maxPoints: 600, // per vraag; bewust iets minder dan de familiespelletjes
       questions: [
         {
           type: 'choice',
@@ -73,13 +85,6 @@ window.QUIZ = {
           text: 'Welke Belgische striptekenaar bedacht Kuifje?',
           options: ['Willy Vandersteen', 'Hergé', 'Peyo', 'Morris'],
           correct: 1,
-          duration: 20
-        },
-        {
-          type: 'choice',
-          text: 'Welke planeet is de grootste van ons zonnestelsel?',
-          options: ['Saturnus', 'Aarde', 'Neptunus', 'Jupiter'],
-          correct: 3,
           duration: 20
         },
         {
@@ -119,32 +124,10 @@ window.QUIZ = {
           duration: 25
         },
         {
-          type: 'choice',
-          text: 'Wat is de chemische formule van water?',
-          options: ['CO₂', 'H₂O', 'O₂', 'NaCl'],
-          correct: 1,
-          duration: 20
-        },
-        {
           type: 'text',
           text: 'Welke Belgische wielrenner kreeg de bijnaam "De Kannibaal"?',
           answers: ['Eddy Merckx', 'Merckx', 'Eddie Merckx', 'Eddy Merkx', 'Merkx'],
           duration: 30
-        },
-        {
-          type: 'number',
-          text: 'Hoeveel kilometer lang is de Belgische kust ongeveer?',
-          correct: 67,
-          tolerance: 40,
-          unit: 'km',
-          duration: 25
-        },
-        {
-          type: 'choice',
-          text: 'Welke stad staat bekend als de diamanthoofdstad van de wereld?',
-          options: ['Antwerpen', 'Brussel', 'Gent', 'Luik'],
-          correct: 0,
-          duration: 20
         },
         {
           type: 'location',
@@ -154,13 +137,6 @@ window.QUIZ = {
           lon: 6.0931,
           label: 'Signaal van Botrange (694 m)',
           duration: 25
-        },
-        {
-          type: 'choice',
-          text: 'Waar of niet waar: een tomaat is een vrucht.',
-          options: ['Waar', 'Niet waar'],
-          correct: 0,
-          duration: 15
         },
         {
           type: 'text',
@@ -185,19 +161,52 @@ window.QUIZ = {
         }
       ]
     },
+
+    // ===================== RONDE 2 =====================
     {
-      id: 'familie',
-      name: 'Familie',
-      questions: [
-        // Hier komen de familievragen.
-      ]
+      id: 'wieishet',
+      kind: 'whois',
+      name: 'Wie is het?',
+      desc: 'Schrijf een mysterieuze hint over jezelf',
+      writeSeconds: 90, // tijd om een hint te schrijven
+      guessSeconds: 20, // tijd om te raden, per hint
+      share: 0.5, // de helft van de spelers komt aan bod
+      totalPoints: 12000, // samen te verdienen over alle hints (per hint max. 1000)
+      wrongShare: 0.1 // fout geraden: 10% van de punten als troost
     },
+
+    // ===================== RONDE 3 =====================
     {
-      id: 'special',
-      name: 'Special Round',
-      questions: [
-        // Hier komen de puzzels, spelletjes en grappige video's.
-      ]
+      id: 'teamspel',
+      kind: 'teams',
+      name: 'Teamspel',
+      desc: 'Kies team 1 of team 2',
+      teamNames: ['Team 1', 'Team 2'],
+      winPoints: 3000,
+      losePoints: 1000
+    },
+
+    // ===================== RONDE 4 =====================
+    {
+      id: 'verstoppertje',
+      kind: 'hide',
+      name: 'Verstoppertje',
+      desc: 'Verstop je op de kaart en zoek de anderen',
+      map: 'media/gebied.jpg', // zet hier je eigen kaart (bv. een schermafbeelding van Google Maps)
+      placeSeconds: 60, // tijd om je te verstoppen
+      seekSeconds: 300, // tijd om te zoeken (5 minuten)
+      findPoints: 200, // per gevonden persoon
+      radius: 4 // hoe dicht je moet tikken, in % van de kaartbreedte
+    },
+
+    // ===================== RONDE 5 =====================
+    {
+      id: 'iqtest',
+      kind: 'iq',
+      name: 'IQ-test',
+      desc: '5 minuten puzzelen, alleen of in een groepje',
+      seconds: 300,
+      groupMax: 3
     }
   ]
 };

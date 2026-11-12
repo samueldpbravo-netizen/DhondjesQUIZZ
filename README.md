@@ -89,3 +89,27 @@ Voor meer spelers schakel je het Firebase-project over naar het Blaze-plan en ve
 1. **Settings > Pages > Deploy from a branch**, kies `main` en `/ (root)`.
 2. Spelers gaan naar `https://<gebruikersnaam>.github.io/<repo>/`,
    de host naar `.../host.html`.
+
+## De vijf rondes
+
+Alle instellingen (tijden, punten) staan in `js/quiz-data.js`.
+
+| Ronde | Hoe het werkt |
+| --- | --- |
+| 1. Algemene kennis | 15 vragen, max. 600 punten per vraag |
+| 2. Wie is het? | Iedereen schrijft op zijn gsm een hint over zichzelf (niet zichtbaar op het grote scherm). De helft van de spelers komt aan bod: hun hint verschijnt en de rest kiest wie het schreef. Wie geraden moet worden, krijgt voor die hint geen punten. |
+| 3. Teamspel | Iedereen kiest team 1 of team 2. Jullie spelen het spel in het echt; de host klikt daarna op het winnende team. Winnaars 3000 punten, verliezers 1000. |
+| 4. Verstoppertje | Iedereen tikt een verstopplek aan op de kaart. Daarna 5 minuten zoeken: tik waar je iemand vermoedt. 200 punten per gevonden persoon. |
+| 5. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
+
+Punten tellen altijd bij; er gaan nooit punten af.
+
+### Eigen kaart voor Verstoppertje
+
+Zet een afbeelding van het gebied (bv. een schermafbeelding van Google Maps) in de map `media`
+met de naam **`gebied.jpg`**. Zolang die er niet is, wordt de kaart van België gebruikt.
+
+### IQ-puzzels aanpassen
+
+De 50 puzzels staan in `js/iq-puzzles.js`, met bovenaan de uitleg per soort
+(getallenreeks, denkvraag, meerkeuze, woordpuzzel, mini-sudoku, blokken slepen, figuren).

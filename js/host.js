@@ -1,49 +1,78 @@
-// Host-scherm (het grote scherm): maakt het spel en de code, beheert spelers en
-// groepen, toont de vragen en telt de punten.
+// Host-scherm (het grote scherm): maakt het spel en de code, beheert spelers,
+// toont de vragen en spelletjes en telt de punten.
 //
 // Database-structuur onder games/{pin}:
 //   createdAt, title
 //   config   { teamMode, teams: { t1: {name}, ... } }
 //   players  { playerId: { name, teamId, joinedAt } }        <- geschreven door spelers
 //   answers  { q{nr}: { playerId: { v, ms } } }              <- geschreven door spelers
-//   scores   { playerId: { total, last, lastQn, frac, detail, answered } } <- door host
-//   state    { phase, qn, roundId, roundName, qIndex, qTotal, question, startedAt, solution }
+//   scores   { playerId: { total, last, lastQn, frac, detail, answered, msg } } <- door host
+//   state    { phase, qn, roundId, roundName, ... }
 //   played   { roundId: true }
+//   whois    { hints: { playerId: tekst } }                  <- Wie is het?
+//   teampick { playerId: 1 | 2 }                             <- Teamspel
+//   hide     { spots: { playerId: {x, y} }, found: { playerId: { anderId: true } } }
+//   iq       { group: { playerId: groepId }, req: { naarId: { vanId: true } }, prog: { playerId: {pts, n} } }
 //
-// Fases: lobby -> select -> question -> reveal -> (question | select) -> end
+// Fases: lobby -> select -> (ronde) -> select -> ... -> end
+//   quiz:   question -> reveal -> ...
+//   whois:  whois-write -> question -> reveal -> ...
+//   teams:  teams-pick -> gameresult
+//   hide:   hide-place -> hide-seek -> gameresult
+//   iq:     iq-group -> iq-play -> gameresult
 
 (async function () {
   const PIN_KEY = 'quiz-host-pin';
+  const DYN_KEY = 'quiz-host-dyn';
+  const TIMED = ['whois-write', 'hide-place', 'hide-seek', 'iq-play'];
   let pin = null;
   let game = {};
   let lastPhaseKey = '';
   let builtQn = -1;
   let revealBuiltQn = -1;
+  let gameKey = '';
   let teamSig = '';
   let selectSig = '';
   let busy = false;
-  let stage = 'answer'; // tijdens reveal: 'answer' of 'board'
+  let stage = 'answer'; // tijdens reveal/gameresult: 'answer' of 'board'
   let endBuilt = false;
   let dialogId = null;
+  let opened = false;
+  let dyn = null; // de vragen van "Wie is het?", gemaakt uit de hints
   const known = new Set();
-  const timer = { started: false, timeup: false, lastSec: null, answers: 0 };
+  const iqEls = new Map();
+  const timer = { started: false, timeup: false, lastSec: null, answers: 0, grouped: 0 };
+
+  try {
+    dyn = JSON.parse(sessionStorage.getItem(DYN_KEY));
+  } catch (e) {}
 
   const players = () => game.players || {};
   const state = () => game.state || { phase: 'lobby' };
   const config = () => game.config || {};
   const scores = () => game.scores || {};
   const path = (sub) => 'games/' + pin + (sub ? '/' + sub : '');
-  const findRound = (id) => QUIZ.rounds.find((r) => r.id === id);
+  const findRound = (id) => (dyn && dyn.id === id ? dyn : QUIZ.rounds.find((r) => r.id === id));
+  const baseRound = (id) => QUIZ.rounds.find((r) => r.id === id) || {};
+  const nameOf = (id) => (players()[id] ? players()[id].name : '?');
+  const byName = (a, b) => nameOf(a).localeCompare(nameOf(b));
 
   $('#quizTitle').textContent = QUIZ.title;
   $('#curtainTitle').textContent = QUIZ.title;
   document.title = QUIZ.title + ' – Host';
 
-  // ---------- Startscherm en geluid ----------
+  // ---------- Startscherm, geluid en muziek ----------
+  function setMusic() {
+    if (!opened) return;
+    const p = state().phase;
+    SFX.music(['question', 'hide-seek', 'iq-play'].includes(p) ? 'tense' : 'lounge');
+  }
   $('#openBtn').onclick = () => {
     SFX.unlock();
     SFX.fireOn();
     SFX.question();
+    opened = true;
+    setMusic();
     $('#curtain').classList.add('open');
   };
   const soundBtn = $('#soundBtn');
@@ -63,9 +92,7 @@
     if (t.matches('input, select, textarea') || $('#playerDialog').open) return;
     const visible = (el) => el.getClientRects().length > 0;
     if (t.matches('button, summary') && visible(t)) return;
-    const btn = !$('#curtain').classList.contains('open')
-      ? $('#openBtn')
-      : [...document.querySelectorAll('.btn-next')].find((b) => visible(b) && !b.disabled);
+    const btn = !opened ? $('#openBtn') : [...document.querySelectorAll('.btn-next')].find((b) => visible(b) && !b.disabled);
     if (btn) {
       e.preventDefault();
       btn.click();
@@ -123,6 +150,7 @@
   $('#newGame').onclick = () => {
     if (!confirm('Een nieuw spel starten? Het huidige spel stopt.')) return;
     sessionStorage.removeItem(PIN_KEY);
+    sessionStorage.removeItem(DYN_KEY);
     location.reload();
   };
 
@@ -147,7 +175,7 @@
   };
   $('#dialogCancel').onclick = () => dialog.close();
 
-  // ---------- Groepen ----------
+  // ---------- Vaste groepen (lobby) ----------
   const countSel = $('#teamCount');
   for (let i = 2; i <= 8; i++) countSel.append(h('option', { value: i }, i));
 
@@ -170,11 +198,10 @@
     if (ids.length) Store.update(path(), upd);
   };
 
-  // ---------- Fase-overgangen ----------
+  // ---------- Start ----------
   $('#startBtn').onclick = () => {
     const upd = { state: { phase: 'select', qn: 0 } };
     if (config().teamMode) {
-      // Wie nog geen groep heeft, gaat naar de kleinste groep.
       const teams = teamList(config());
       const size = {};
       teams.forEach((t) => (size[t.id] = 0));
@@ -192,6 +219,17 @@
     Store.update(path(), upd);
   };
 
+  function startRound(round) {
+    if (round.kind === 'whois') startWhois(round);
+    else if (round.kind === 'teams') startTeams(round);
+    else if (round.kind === 'hide') startHide(round);
+    else if (round.kind === 'iq') startIq(round);
+    else startQuestion(round, 0);
+  }
+
+  const baseState = (round, phase, extra) => ({ phase, qn: state().qn || 0, roundId: round.id, roundName: round.name, ...extra });
+
+  // ================= VRAGEN =================
   // Stuurt een vraag naar iedereen (zonder het antwoord).
   function startQuestion(round, index) {
     const q = round.questions[index];
@@ -206,6 +244,12 @@
       for (let i = 0; i < 10 && items.every((it, k) => it === q.items[k]); i++) items = shuffled(q.items);
       pub.items = items;
       pub.hint = q.hint || null;
+    }
+    if (type === 'who') {
+      pub.label = 'Hint';
+      pub.names = Object.keys(players())
+        .sort(byName)
+        .map((id) => ({ id, name: nameOf(id) }));
     }
     Store.set(path('state'), {
       phase: 'question',
@@ -222,7 +266,7 @@
   function currentQuestion() {
     const s = state();
     const round = findRound(s.roundId);
-    return round ? round.questions[s.qIndex] : null;
+    return round && round.questions ? round.questions[s.qIndex] : null;
   }
 
   function solutionOf(q) {
@@ -237,6 +281,8 @@
         return { lat: q.lat, lon: q.lon, label: q.label || '' };
       case 'order':
         return { items: q.items };
+      case 'who':
+        return { id: q.correct, name: players()[q.correct] ? nameOf(q.correct) : q.correctName };
     }
   }
 
@@ -246,14 +292,23 @@
     const q = currentQuestion();
     if (s.phase !== 'question' || busy || !q) return;
     busy = true;
+    const round = findRound(s.roundId);
+    const max = q.maxPoints || round.maxPoints || 1000;
     const answers = (game.answers && game.answers['q' + s.qn]) || {};
     const upd = { 'state/phase': 'reveal', 'state/solution': solutionOf(q) };
     for (const id of Object.keys(players())) {
+      const prev = (scores()[id] && scores()[id].total) || 0;
+      if (q.type === 'who' && id === q.correct) {
+        // Wie geraden moet worden, krijgt zelf geen punten.
+        upd['scores/' + id] = { total: prev, last: 0, lastQn: s.qn, frac: 0, answered: false, msg: 'Dat was jouw hint!' };
+        continue;
+      }
       const a = answers[id];
       const res = a ? judgeAnswer(q, a.v) : { frac: 0 };
-      const pts = a ? calcPoints(res.frac, a.ms, s.question.duration) : 0;
+      let pts = a ? calcPoints(res.frac, a.ms, s.question.duration, max) : 0;
+      if (a && res.frac <= 0) pts = round.wrongPoints || 0; // troostpunten
       upd['scores/' + id] = {
-        total: ((scores()[id] && scores()[id].total) || 0) + pts,
+        total: prev + pts,
         last: pts,
         lastQn: s.qn,
         frac: res.frac,
@@ -269,20 +324,21 @@
   // Een getypt antwoord toch goed of fout rekenen.
   function toggleText(ids, makeOk) {
     const s = state();
+    const round = findRound(s.roundId);
+    const max = (round && round.maxPoints) || 1000;
     const answers = (game.answers && game.answers['q' + s.qn]) || {};
     const upd = {};
     for (const id of ids) {
       const sc = scores()[id];
       if (!sc || sc.lastQn !== s.qn || !answers[id]) continue;
-      const pts = makeOk ? calcPoints(1, answers[id].ms, s.question.duration) : 0;
+      const pts = makeOk ? calcPoints(1, answers[id].ms, s.question.duration, max) : 0;
       upd['scores/' + id] = { ...sc, total: sc.total - sc.last + pts, last: pts, frac: makeOk ? 1 : 0 };
     }
     Store.update(path(), upd);
   }
 
-  $('#boardBtn').onclick = () => {
+  function showBoard() {
     const s = state();
-    if (s.phase !== 'reveal') return;
     stage = 'board';
     showView('v-board');
     SFX.board();
@@ -290,19 +346,30 @@
     $('#boardTeamsWrap').hidden = !r.teams.length;
     renderBoard($('#boardTeams'), r.teams, 8, true);
     renderBoard($('#boardPlayers'), r.individuals, r.teams.length ? 5 : 8, true);
-    $('#nextBtn .plaque-text').textContent = s.qIndex + 1 < s.qTotal ? 'Volgende vraag' : 'Einde ronde';
-  };
+    const more = s.phase === 'reveal' && s.qIndex + 1 < s.qTotal;
+    $('#nextBtn .plaque-text').textContent = more ? 'Volgende vraag' : 'Einde ronde';
+  }
 
-  $('#nextBtn').onclick = () => {
+  function nextStep() {
     const s = state();
-    if (s.phase !== 'reveal') return;
+    if (s.phase !== 'reveal' && s.phase !== 'gameresult') return;
     const round = findRound(s.roundId);
-    if (round && s.qIndex + 1 < s.qTotal) {
+    if (s.phase === 'reveal' && round && s.qIndex + 1 < s.qTotal) {
       startQuestion(round, s.qIndex + 1);
     } else {
       Store.update(path(), { ['played/' + s.roundId]: true, state: { phase: 'select', qn: s.qn } });
     }
+  }
+
+  $('#boardBtn').onclick = () => {
+    const s = state();
+    if (s.phase !== 'reveal') return;
+    const round = findRound(s.roundId);
+    // Snelle rondes (Wie is het?) tonen de stand pas op het einde.
+    if (round && round.fast && s.qIndex + 1 < s.qTotal) nextStep();
+    else showBoard();
   };
+  $('#nextBtn').onclick = nextStep;
 
   $('#endBtn').onclick = () => {
     if (confirm('De quiz beëindigen en de eindstand tonen?')) {
@@ -310,36 +377,233 @@
     }
   };
 
+  // Geeft iedereen punten voor een spelletje. fn(id) -> { pts, frac, msg, detail, answered }
+  function awardAll(qn, fn) {
+    const upd = {};
+    for (const id of Object.keys(players())) {
+      const r = fn(id) || {};
+      const pts = Math.max(0, Math.round(r.pts || 0));
+      upd['scores/' + id] = {
+        total: ((scores()[id] && scores()[id].total) || 0) + pts,
+        last: pts,
+        lastQn: qn,
+        frac: r.frac == null ? (pts > 0 ? 1 : 0) : r.frac,
+        detail: r.detail == null ? null : r.detail,
+        answered: r.answered !== false,
+        msg: r.msg || null
+      };
+    }
+    return upd;
+  }
+
+  // ================= WIE IS HET? =================
+  function startWhois(round) {
+    Store.update(path(), {
+      whois: null,
+      state: baseState(round, 'whois-write', { startedAt: Store.now(), duration: round.writeSeconds || 90 })
+    });
+  }
+
+  function whoisHints() {
+    const hints = (game.whois && game.whois.hints) || {};
+    return Object.keys(hints).filter((id) => players()[id] && String(hints[id]).trim());
+  }
+  const whoisCount = (round) => Math.max(1, Math.ceil(Object.keys(players()).length * (round.share || 0.5)));
+
+  function startGuessing() {
+    const s = state();
+    const round = baseRound(s.roundId);
+    const ids = whoisHints();
+    if (!ids.length) return;
+    const chosen = shuffled(ids).slice(0, whoisCount(round));
+    const max = Math.min(1000, Math.round((round.totalPoints || 12000) / chosen.length / 10) * 10);
+    dyn = {
+      id: round.id,
+      name: round.name,
+      kind: 'whois',
+      fast: true,
+      maxPoints: max,
+      wrongPoints: Math.round(max * (round.wrongShare || 0)),
+      questions: chosen.map((id) => ({
+        type: 'who',
+        text: String(game.whois.hints[id]).trim(),
+        correct: id,
+        correctName: nameOf(id),
+        duration: round.guessSeconds || 20
+      }))
+    };
+    sessionStorage.setItem(DYN_KEY, JSON.stringify(dyn));
+    startQuestion(dyn, 0);
+  }
+
+  // ================= TEAMSPEL =================
+  function startTeams(round) {
+    Store.update(path(), {
+      teampick: null,
+      state: baseState(round, 'teams-pick', { teamNames: round.teamNames || ['Team 1', 'Team 2'] })
+    });
+  }
+
+  function finishTeams(winner) {
+    const s = state();
+    const round = baseRound(s.roundId);
+    const picks = game.teampick || {};
+    const names = round.teamNames || ['Team 1', 'Team 2'];
+    const qn = (s.qn || 0) + 1;
+    const upd = awardAll(qn, (id) => {
+      if (!picks[id]) return { pts: 0, frac: 0, answered: false, msg: 'Je koos geen team' };
+      const won = picks[id] === winner;
+      return {
+        pts: won ? round.winPoints : round.losePoints,
+        frac: won ? 1 : 0.5,
+        msg: won ? 'Jouw team wint!' : 'Jouw team verliest'
+      };
+    });
+    upd.state = baseState(round, 'gameresult', { qn, game: 'teams', winner, title: names[winner - 1] + ' wint!' });
+    SFX.reveal();
+    setTimeout(() => Store.update(path(), upd), 650);
+  }
+
+  // ================= VERSTOPPERTJE =================
+  function startHide(round) {
+    Store.update(path(), {
+      hide: null,
+      state: baseState(round, 'hide-place', { map: round.map, startedAt: Store.now(), duration: round.placeSeconds || 60 })
+    });
+  }
+  const hideSpots = () => (game.hide && game.hide.spots) || {};
+  const hideFound = () => (game.hide && game.hide.found) || {};
+  const foundCount = (id) => Object.keys(hideFound()[id] || {}).filter((t) => players()[t]).length;
+
+  function startSeek() {
+    const s = state();
+    const round = baseRound(s.roundId);
+    Store.set(
+      path('state'),
+      baseState(round, 'hide-seek', {
+        map: round.map,
+        radius: round.radius || 4,
+        startedAt: Store.now() + INTRO_MS,
+        duration: round.seekSeconds || 300,
+        intro: 'Zoeken!'
+      })
+    );
+  }
+
+  function finishHide() {
+    const s = state();
+    const round = baseRound(s.roundId);
+    const qn = (s.qn || 0) + 1;
+    const upd = awardAll(qn, (id) => {
+      const n = foundCount(id);
+      return { pts: n * (round.findPoints || 200), frac: n ? 1 : 0, detail: n, msg: n + (n === 1 ? ' persoon gevonden' : ' personen gevonden') };
+    });
+    upd.state = baseState(round, 'gameresult', { qn, game: 'hide', map: round.map, title: 'Hier zat iedereen verstopt' });
+    SFX.reveal();
+    setTimeout(() => Store.update(path(), upd), 650);
+  }
+
+  // ================= IQ-TEST =================
+  function startIq(round) {
+    Store.update(path(), { iq: null, state: baseState(round, 'iq-group', { groupMax: round.groupMax || 3 }) });
+  }
+
+  function startIqPlay() {
+    const s = state();
+    const round = baseRound(s.roundId);
+    Store.set(
+      path('state'),
+      baseState(round, 'iq-play', {
+        groupMax: round.groupMax || 3,
+        startedAt: Store.now() + INTRO_MS,
+        duration: round.seconds || 300,
+        intro: 'IQ-test'
+      })
+    );
+  }
+
+  // Groepjes: spelers met dezelfde groepId horen samen. Wie alleen is, vormt zijn eigen groep.
+  function iqClusters() {
+    const g = (game.iq && game.iq.group) || {};
+    const map = new Map();
+    for (const id of Object.keys(players())) {
+      const gid = g[id] || 'solo-' + id;
+      if (!map.has(gid)) map.set(gid, []);
+      map.get(gid).push(id);
+    }
+    return [...map.entries()].map(([gid, ids]) => ({ gid: ids.length > 1 ? gid : 'solo-' + ids[0], ids: ids.sort(byName) }));
+  }
+  const iqProg = (id) => (game.iq && game.iq.prog && game.iq.prog[id]) || { pts: 0, n: 0 };
+
+  function finishIq() {
+    const s = state();
+    const round = baseRound(s.roundId);
+    const qn = (s.qn || 0) + 1;
+    const avgOf = {};
+    for (const c of iqClusters()) {
+      const avg = Math.round(c.ids.reduce((sum, id) => sum + iqProg(id).pts, 0) / c.ids.length);
+      c.ids.forEach((id) => (avgOf[id] = { avg, size: c.ids.length }));
+    }
+    const upd = awardAll(qn, (id) => {
+      const own = iqProg(id).pts;
+      const { avg, size } = avgOf[id];
+      return {
+        pts: avg,
+        frac: avg > 0 ? 1 : 0,
+        detail: own,
+        msg: size > 1 ? `Groepsgemiddelde (jij haalde ${fmt(own)})` : 'Jouw IQ-score'
+      };
+    });
+    upd.state = baseState(round, 'gameresult', { qn, game: 'iq', title: 'Resultaat van de IQ-test' });
+    SFX.reveal();
+    setTimeout(() => Store.update(path(), upd), 650);
+  }
+
   // ---------- Timer ----------
   function onTick() {
     const s = state();
     const intro = $('#intro');
-    if (s.phase !== 'question') {
-      intro.hidden = true;
-      return;
-    }
     const now = Store.now();
-    const dur = s.question.duration;
-    if (now < s.startedAt) {
-      if (intro.hidden) {
-        $('#introText').textContent = 'Vraag ' + (s.qIndex + 1);
-        $('#introSub').textContent = s.roundName;
-        intro.hidden = false;
+    if (s.phase === 'question') {
+      const dur = s.question.duration;
+      if (now < s.startedAt) {
+        if (intro.hidden) {
+          $('#introText').textContent = (s.question.label || 'Vraag') + ' ' + (s.qIndex + 1);
+          $('#introSub').textContent = s.roundName;
+          intro.hidden = false;
+        }
+        $('#timer').textContent = dur;
+        $('#fuse').style.width = '100%';
+        return;
       }
-      $('#timer').textContent = dur;
-      $('#fuse').style.width = '100%';
-      return;
+      intro.hidden = true;
+      countdown(dur - (now - s.startedAt) / 1000, dur, $('#timer'), $('#timerBox'), $('#revealBtn'), 5, false);
+      $('#fuse').style.width = Math.max(0, ((dur - (now - s.startedAt) / 1000) / dur) * 100) + '%';
+    } else if (TIMED.includes(s.phase)) {
+      if (now < s.startedAt) {
+        if (intro.hidden) {
+          $('#introText').textContent = s.intro || s.roundName;
+          $('#introSub').textContent = s.roundName;
+          intro.hidden = false;
+        }
+        $('#gTimer').textContent = clock(s.duration);
+        return;
+      }
+      intro.hidden = true;
+      countdown(s.duration - (now - s.startedAt) / 1000, s.duration, $('#gTimer'), $('#gTimerBox'), $('#gBtn'), 10, true);
+    } else {
+      intro.hidden = true;
     }
-    intro.hidden = true;
+  }
+
+  function countdown(left, dur, label, box, readyBtn, urgentFrom, asClock) {
     if (!timer.started) {
       timer.started = true;
       SFX.go();
     }
-    const left = dur - (now - s.startedAt) / 1000;
     const sec = Math.max(0, Math.ceil(left));
-    $('#timer').textContent = sec;
-    $('#fuse').style.width = Math.max(0, (left / dur) * 100) + '%';
-    $('#timerBox').classList.toggle('urgent', sec <= 5 && left > 0);
+    label.textContent = asClock ? clock(left) : sec;
+    box.classList.toggle('urgent', sec <= urgentFrom && left > 0);
     if (sec !== timer.lastSec) {
       timer.lastSec = sec;
       if (sec <= 5 && sec > 0) SFX.tick(sec <= 3);
@@ -347,7 +611,7 @@
     if (left <= 0 && !timer.timeup) {
       timer.timeup = true;
       SFX.timeup();
-      $('#revealBtn').classList.add('ready');
+      readyBtn.classList.add('ready');
     }
   }
 
@@ -358,13 +622,16 @@
     if (key !== lastPhaseKey) {
       lastPhaseKey = key;
       busy = false;
-      if (s.phase !== 'reveal') stage = 'answer';
+      if (s.phase !== 'reveal' && s.phase !== 'gameresult') stage = 'answer';
+      if (s.phase !== 'question' && s.phase !== 'reveal') Object.assign(timer, { started: false, timeup: false, lastSec: null, answers: 0 });
+      setMusic();
     }
     $('#pinSmall').textContent = s.phase === 'lobby' ? '' : 'Code: ' + pin;
     if (s.phase === 'lobby') renderLobby();
     else if (s.phase === 'select') renderSelect();
     else if (s.phase === 'question' || s.phase === 'reveal') renderQuestion(s);
-    else renderEnd();
+    else if (s.phase === 'end') renderEnd();
+    else renderGame(s);
   }
 
   function renderLobby() {
@@ -384,8 +651,6 @@
     $('#teamSettings').hidden = !c.teamMode;
     countSel.value = teams.length;
 
-    // Naamvelden alleen opnieuw opbouwen als het aantal groepen wijzigt
-    // (anders verlies je de cursor tijdens het typen).
     const sig = teams.map((t) => t.id).join(',');
     if (sig !== teamSig) {
       teamSig = sig;
@@ -445,22 +710,23 @@
       selectSig = sig;
       $('#rounds').replaceChildren(
         ...QUIZ.rounds.map((round, i) => {
-          const n = round.questions.length;
+          const isQuiz = !round.kind || round.kind === 'quiz';
+          const n = isQuiz ? round.questions.length : 1;
           const done = played[round.id];
           return plaque(
             'button',
             {
               class: 'round' + (done ? ' done' : ''),
               orn: true,
-              style: `animation-delay:${i * 130}ms`,
+              style: `animation-delay:${i * 110}ms`,
               disabled: !n,
               onclick: () => {
                 if (done && !confirm('Deze ronde is al gespeeld. Opnieuw spelen?')) return;
-                startQuestion(round, 0);
+                startRound(round);
               }
             },
-            round.name,
-            h('small', {}, !n ? 'binnenkort' : done ? 'gespeeld' : n + ' vragen')
+            `${i + 1}. ${round.name}`,
+            h('small', {}, done ? 'gespeeld' : !n ? 'binnenkort' : isQuiz ? n + ' vragen' : round.desc || '')
           );
         })
       );
@@ -477,6 +743,7 @@
     const isReveal = s.phase === 'reveal';
     if (isReveal && stage === 'board') return;
     showView('v-question');
+    const round = findRound(s.roundId) || {};
 
     // Vraag maar één keer opbouwen, zodat animaties en video's niet herstarten.
     if (builtQn !== s.qn) {
@@ -499,7 +766,7 @@
     const ps = players();
     const answers = (game.answers && game.answers['q' + s.qn]) || {};
     const answeredIds = Object.keys(answers).filter((id) => ps[id]);
-    const total = Object.keys(ps).length;
+    const total = Object.keys(ps).length - (q.type === 'who' ? 1 : 0);
     $('#answered').textContent = `${answeredIds.length} / ${total} antwoorden`;
     if (!isReveal && answeredIds.length > timer.answers) SFX.blip();
     timer.answers = answeredIds.length;
@@ -507,6 +774,7 @@
 
     $('#revealBtn').hidden = isReveal;
     $('#boardBtn').hidden = !isReveal;
+    $('#boardBtn .plaque-text').textContent = round.fast && s.qIndex + 1 < s.qTotal ? 'Volgende hint' : 'Stand';
     $('#timerBox').hidden = isReveal;
     $('#fuse').parentElement.hidden = isReveal;
 
@@ -524,7 +792,8 @@
   function buildBody(q) {
     const body = $('#qBody');
     if (q.type === 'choice') {
-      fill(body, 
+      fill(
+        body,
         h(
           'div',
           { class: 'options' },
@@ -536,7 +805,8 @@
         )
       );
     } else if (q.type === 'text') {
-      fill(body, 
+      fill(
+        body,
         q.scramble
           ? h(
               'div',
@@ -552,10 +822,13 @@
       fill(body, h('div', { class: 'map-wrap' }, buildMap(q.map)));
       $('#qRound').textContent = 'Duid de plek aan op je gsm';
     } else if (q.type === 'order') {
-      fill(body, 
+      fill(
+        body,
         h('p', { class: 'hint' }, 'Zet in de juiste volgorde' + (q.hint ? ': ' + q.hint : '')),
         h('div', { class: 'order-list' }, q.items.map((it) => plaque('div', { class: 'order-item' }, it)))
       );
+    } else if (q.type === 'who') {
+      fill(body, h('p', { class: 'hint' }, 'Wie schreef dit? Kies de juiste naam op je gsm.'));
     }
   }
 
@@ -570,6 +843,7 @@
     const fracOf = (id) => (sc[id] && sc[id].lastQn === s.qn ? sc[id].frac || 0 : 0);
     const out = $('#qReveal');
     let sparkTarget = null;
+    const delay = (i) => `animation-delay:${Math.min(i, 30) * 70}ms`;
 
     if (q.type === 'choice') {
       document.querySelectorAll('#qBody .option').forEach((el, i) => {
@@ -579,7 +853,6 @@
         if (i === sol.correct) sparkTarget = el;
       });
     } else if (q.type === 'text') {
-      // Zelfde antwoorden samen nemen
       const groups = new Map();
       for (const id of ids) {
         const key = normalizeText(answers[id].v);
@@ -588,7 +861,8 @@
       }
       const list = [...groups.values()].sort((a, b) => b.ids.length - a.ids.length);
       const big = plaque('div', { class: 'answer-big correct', orn: true }, sol.answer);
-      fill(out, 
+      fill(
+        out,
         big,
         h(
           'div',
@@ -598,7 +872,7 @@
               'button',
               {
                 class: 'word ' + (g.ok ? 'ok' : 'no') + (g.ids.length > 1 ? ' big' : ''),
-                style: `animation-delay:${Math.min(i, 30) * 70}ms`,
+                style: delay(i),
                 title: 'Klik om dit antwoord goed of fout te rekenen',
                 onclick: () => toggleText(g.ids, !g.ok)
               },
@@ -610,17 +884,34 @@
         list.length ? h('p', { class: 'hint small-text' }, 'Klik op een antwoord om het toch goed of fout te rekenen.') : null
       );
       sparkTarget = big;
-    } else if (q.type === 'number') {
-      const sorted = ids.slice().sort((a, b) => fracOf(b) - fracOf(a) || Math.abs(answers[a].v - sol.value) - Math.abs(answers[b].v - sol.value));
-      const big = plaque('div', { class: 'answer-big correct', orn: true }, fmt(sol.value) + (q.unit ? ' ' + q.unit : ''));
-      fill(out, 
+    } else if (q.type === 'who') {
+      // Op wie werd er gestemd?
+      const votes = new Map();
+      for (const id of ids) votes.set(answers[id].v, (votes.get(answers[id].v) || 0) + 1);
+      const list = [...votes.entries()].sort((a, b) => b[1] - a[1]);
+      const big = plaque('div', { class: 'answer-big correct', orn: true }, sol.name);
+      fill(
+        out,
         big,
         h(
           'div',
           { class: 'words' },
-          sorted.map((id, i) =>
-            h('span', { class: 'word ' + fracClass(fracOf(id)), style: `animation-delay:${Math.min(i, 30) * 70}ms` }, ps[id].name, h('small', {}, fmt(answers[id].v)))
+          list.map(([target, n], i) =>
+            h('span', { class: 'word ' + (target === sol.id ? 'ok' : 'no') + (n > 1 ? ' big' : ''), style: delay(i) }, nameOf(target), h('small', {}, '×' + n))
           )
+        )
+      );
+      sparkTarget = big;
+    } else if (q.type === 'number') {
+      const sorted = ids.slice().sort((a, b) => fracOf(b) - fracOf(a) || Math.abs(answers[a].v - sol.value) - Math.abs(answers[b].v - sol.value));
+      const big = plaque('div', { class: 'answer-big correct', orn: true }, fmt(sol.value) + (q.unit ? ' ' + q.unit : ''));
+      fill(
+        out,
+        big,
+        h(
+          'div',
+          { class: 'words' },
+          sorted.map((id, i) => h('span', { class: 'word ' + fracClass(fracOf(id)), style: delay(i) }, ps[id].name, h('small', {}, fmt(answers[id].v))))
         )
       );
       sparkTarget = big;
@@ -648,6 +939,238 @@
       sparkTarget = list;
     }
     if (first && sparkTarget) FX.burstAt(sparkTarget, 90, 8);
+  }
+
+  // ================= WEERGAVE VAN DE SPELLETJES =================
+  function setGame(o) {
+    $('#gName').textContent = o.name;
+    $('#gTitle').textContent = o.title || '';
+    $('#gTitle').hidden = !o.title;
+    $('#gSub').textContent = o.sub || '';
+    $('#gFoot').textContent = '';
+    $('#gTimerBox').hidden = !o.timer;
+    $('#gTimerBox').classList.remove('urgent');
+    const btn = $('#gBtn');
+    btn.hidden = !o.btn;
+    btn.classList.remove('ready');
+    btn.disabled = false;
+    btn.querySelector('.plaque-text').textContent = o.btn || '';
+    btn.onclick = o.onBtn || null;
+  }
+  const timeOver = (s) => Store.now() >= s.startedAt + s.duration * 1000;
+
+  function renderGame(s) {
+    if (s.phase === 'gameresult' && stage === 'board') return;
+    showView('v-game');
+    const key = s.phase + '|' + (s.qn || 0) + '|' + s.roundId;
+    const first = key !== gameKey;
+    gameKey = key;
+    const round = baseRound(s.roundId);
+    const body = $('#gBody');
+    const ps = players();
+    const total = Object.keys(ps).length;
+
+    if (s.phase === 'whois-write') {
+      const ids = whoisHints();
+      if (first) {
+        setGame({
+          name: s.roundName,
+          title: 'Schrijf een mysterieuze hint over jezelf',
+          sub: 'Typ op je gsm iets waaraan de anderen jou kunnen herkennen. Verklap niet te veel!',
+          btn: 'Start het raden',
+          onBtn: startGuessing,
+          timer: true
+        });
+      }
+      fill(
+        body,
+        plaque('div', { class: 'answer-big' }, `${ids.length} / ${total} hints binnen`),
+        h('div', { class: 'names' }, ids.sort(byName).map((id) => plaque('div', { class: 'name' }, nameOf(id)))),
+        h('p', { class: 'hint' }, `Niet iedereen komt aan bod: we raden ${Math.min(whoisCount(round), Math.max(1, ids.length))} hints.`)
+      );
+      $('#gBtn').disabled = !ids.length;
+      if (total && ids.length >= total) $('#gBtn').classList.add('ready');
+    } else if (s.phase === 'teams-pick') {
+      const picks = game.teampick || {};
+      const names = round.teamNames || ['Team 1', 'Team 2'];
+      if (first) {
+        setGame({
+          name: s.roundName,
+          title: 'Kies je team',
+          sub: `Kies op je gsm. Het winnende team krijgt ${fmt(round.winPoints)} punten, het andere ${fmt(round.losePoints)}.`
+        });
+      }
+      const col = (t) => {
+        const ids = Object.keys(ps)
+          .filter((id) => picks[id] === t)
+          .sort(byName);
+        return h(
+          'div',
+          { class: 'panel team-col' },
+          h('h2', {}, `${names[t - 1]} (${ids.length})`),
+          h('div', { class: 'names' }, ids.map((id) => plaque('div', { class: 'name' }, nameOf(id)))),
+          plaque('button', { class: 'win-btn', onclick: () => confirm(names[t - 1] + ' wint. Punten uitdelen?') && finishTeams(t) }, names[t - 1] + ' wint')
+        );
+      };
+      const none = Object.keys(ps)
+        .filter((id) => !picks[id])
+        .sort(byName);
+      fill(body, h('div', { class: 'columns' }, col(1), col(2)), none.length ? h('p', { class: 'hint' }, 'Nog niet gekozen: ' + none.map(nameOf).join(', ')) : null);
+    } else if (s.phase === 'hide-place') {
+      if (first) {
+        setGame({
+          name: s.roundName,
+          title: 'Verstop je op de kaart',
+          sub: 'Tik op je gsm op de plek waar je je verstopt. Daarna gaat iedereen zoeken.',
+          btn: 'Start het zoeken',
+          onBtn: startSeek,
+          timer: true
+        });
+        fill(body, h('div', { class: 'map-wrap wide-map' }, buildImageMap(s.map)));
+      }
+      const n = Object.keys(hideSpots()).filter((id) => ps[id]).length;
+      $('#gFoot').textContent = `${n} / ${total} verstopt`;
+      if (total && n >= total) $('#gBtn').classList.add('ready');
+    } else if (s.phase === 'hide-seek') {
+      if (first) {
+        setGame({
+          name: s.roundName,
+          title: 'Zoek de anderen!',
+          sub: `Tik op je gsm op de kaart waar je iemand vermoedt. Elke gevonden persoon is ${fmt(round.findPoints)} punten waard.`,
+          btn: 'Stop en toon alles',
+          onBtn: () => (timeOver(s) || confirm('De tijd is nog niet om. Toch stoppen?')) && finishHide(),
+          timer: true
+        });
+        fill(
+          body,
+          h('div', { class: 'columns' }, h('div', { class: 'map-wrap wide-map grow' }, buildImageMap(s.map)), h('div', { class: 'panel' }, h('h2', {}, 'Beste speurders'), h('ol', { class: 'board compact', id: 'seekBoard' })))
+        );
+      }
+      const rows = Object.keys(ps)
+        .map((id) => ({ name: nameOf(id), total: foundCount(id) }))
+        .filter((r) => r.total)
+        .sort((a, b) => b.total - a.total);
+      renderBoard($('#seekBoard'), rows, 8);
+      const all = rows.reduce((sum, r) => sum + r.total, 0);
+      if (all > timer.answers) SFX.blip();
+      timer.answers = all;
+    } else if (s.phase === 'iq-group' || s.phase === 'iq-play') {
+      const playing = s.phase === 'iq-play';
+      if (first) {
+        setGame(
+          playing
+            ? {
+                name: s.roundName,
+                sub: 'Los zoveel mogelijk puzzels op. Kun je er eentje niet? Sla ze over!',
+                btn: 'Toon resultaat',
+                onBtn: () => (timeOver(s) || confirm('De tijd is nog niet om. Toch stoppen?')) && finishIq(),
+                timer: true
+              }
+            : {
+                name: s.roundName,
+                title: 'Vorm een groepje (of speel alleen)',
+                sub: `Vraag op je gsm iemand om samen te spelen, met maximaal ${s.groupMax}. Iedereen puzzelt op zijn eigen gsm; je krijgt het gemiddelde van je groepje.`,
+                btn: 'Start de IQ-test',
+                onBtn: startIqPlay
+              }
+        );
+        if (!body.querySelector('.iq-board')) {
+          iqEls.clear();
+          fill(body, h('div', { class: 'iq-board' }));
+        }
+      }
+      layoutIq(body.querySelector('.iq-board'), playing);
+    } else if (s.phase === 'gameresult') {
+      if (!first) return;
+      setGame({ name: s.roundName, title: s.title, btn: 'Stand', onBtn: showBoard });
+      if (s.game === 'teams') {
+        const picks = game.teampick || {};
+        const winners = Object.keys(ps)
+          .filter((id) => picks[id] === s.winner)
+          .sort(byName);
+        const names = h('div', { class: 'names' }, winners.map((id) => plaque('div', { class: 'name pop' }, nameOf(id))));
+        fill(body, h('p', { class: 'hint' }, `+${fmt(round.winPoints)} punten voor de winnaars, +${fmt(round.losePoints)} voor het andere team`), names);
+        FX.burstAt($('#gTitle'), 140, 10);
+        SFX.fanfare();
+      } else if (s.game === 'hide') {
+        const pins = Object.keys(hideSpots())
+          .filter((id) => ps[id])
+          .map((id) => ({ x: hideSpots()[id].x, y: hideSpots()[id].y, cls: 'near', label: nameOf(id) }));
+        const rows = Object.keys(ps)
+          .map((id) => ({ name: nameOf(id), total: foundCount(id) }))
+          .sort((a, b) => b.total - a.total);
+        fill(
+          body,
+          h('div', { class: 'columns' }, h('div', { class: 'map-wrap wide-map grow' }, buildImageMap(s.map, pins)), h('div', { class: 'panel' }, h('h2', {}, 'Gevonden'), h('ol', { class: 'board compact', id: 'seekBoard' })))
+        );
+        renderBoard($('#seekBoard'), rows, 10);
+      } else if (s.game === 'iq') {
+        const rows = iqClusters()
+          .map((c) => ({
+            name: c.ids.map(nameOf).join(' + '),
+            total: Math.round(c.ids.reduce((sum, id) => sum + iqProg(id).pts, 0) / c.ids.length)
+          }))
+          .sort((a, b) => b.total - a.total);
+        const list = h('ol', { class: 'board' });
+        fill(body, list);
+        renderBoard(list, rows, 10, false);
+        list.querySelectorAll('.board-row').forEach((el, i) => {
+          el.classList.add('slide');
+          el.style.animationDelay = i * 120 + 'ms';
+        });
+        FX.burstAt($('#gTitle'), 100, 9);
+      }
+    }
+    onTick();
+  }
+
+  // Zet de namen op het IQ-bord: iedereen op een vaste willekeurige plek,
+  // groepjes schuiven naar elkaar toe.
+  function layoutIq(board, playing) {
+    if (!board) return;
+    const clusters = iqClusters();
+    const seen = new Set();
+    let grouped = 0;
+    for (const c of clusters) {
+      const inGroup = c.ids.length > 1;
+      const anchor = inGroup ? c.gid : c.ids[0];
+      const x = 9 + hash01(anchor, 1) * 82;
+      const y = 6 + hash01(anchor, 2) * (inGroup ? 62 : 80);
+      const color = TEAM_COLORS[Math.floor(hash01(anchor, 3) * TEAM_COLORS.length)];
+      c.ids.forEach((id, i) => {
+        seen.add(id);
+        if (inGroup) grouped++;
+        let el = iqEls.get(id);
+        if (!el) {
+          el = plaque('div', { class: 'name iq-name pop' }, '');
+          iqEls.set(id, el);
+          board.append(el);
+        }
+        const n = iqProg(id).n;
+        el.querySelector('.plaque-text').textContent = nameOf(id) + (playing && n ? ' · ' + n : '');
+        el.style.left = x + '%';
+        el.style.top = `calc(${y}% + ${i * 2.5}em)`;
+        el.classList.toggle('grouped', inGroup);
+        el.style.setProperty('--group', inGroup ? color : 'transparent');
+      });
+    }
+    for (const [id, el] of iqEls) {
+      if (!seen.has(id)) {
+        el.remove();
+        iqEls.delete(id);
+      }
+    }
+    if (grouped > timer.grouped) SFX.pop();
+    timer.grouped = grouped;
+    const solved = Object.keys(players()).reduce((sum, id) => sum + iqProg(id).n, 0);
+    if (playing) {
+      $('#gFoot').textContent = solved + ' puzzels opgelost';
+      if (solved > timer.answers) SFX.blip();
+      timer.answers = solved;
+    } else {
+      const groups = clusters.filter((c) => c.ids.length > 1).length;
+      $('#gFoot').textContent = groups + (groups === 1 ? ' groepje' : ' groepjes');
+    }
   }
 
   function renderEnd() {
