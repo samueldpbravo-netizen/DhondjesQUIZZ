@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz – Host</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="host">
+  <div id="banner" class="banner" hidden></div>
+
+  <header class="topbar">
+    <strong id="quizTitle"></strong>
+    <span id="pinSmall" class="muted"></span>
+    <button id="newGame" class="btn small ghost">Nieuw spel</button>
+  </header>
+
+  <main>
+    <section id="v-loading" class="view center">
+      <p id="loadingText">Bezig met laden…</p>
+    </section>
+
+    <!-- LOBBY -->
+    <section id="v-lobby" class="view" hidden>
+      <div class="pinbox">
+        <div class="muted">Ga naar <span id="joinUrl" class="url"></span> en gebruik code</div>
+        <div id="pinBig" class="pin"></div>
+      </div>
+
+      <div class="columns">
+        <div class="card">
+          <h2>Groepen</h2>
+          <label class="check"><input type="checkbox" id="teamMode"> Spelen in groepen</label>
+          <div id="teamSettings" hidden>
+            <label>Aantal groepen
+              <select id="teamCount"></select>
+            </label>
+            <div id="teamNames" class="team-names"></div>
+            <button id="shuffleTeams" class="btn small">Spelers willekeurig verdelen</button>
+            <p class="muted small-text">Spelers kunnen ook zelf een groep kiezen op hun toestel.</p>
+          </div>
+        </div>
+
+        <div class="card grow">
+          <h2>Spelers <span id="playerCount" class="muted"></span></h2>
+          <div id="playerList" class="player-list"></div>
+          <p class="muted small-text">Klik op een naam om die speler te verwijderen.</p>
+        </div>
+      </div>
+
+      <div class="center">
+        <button id="startBtn" class="btn big">Start de quiz</button>
+      </div>
+    </section>
+
+    <!-- RONDE KIEZEN -->
+    <section id="v-select" class="view" hidden>
+      <h1>Kies een ronde</h1>
+      <div class="columns">
+        <div id="rounds" class="grow"></div>
+        <div class="card side">
+          <h2>Stand</h2>
+          <ol id="selTeamBoard" class="board"></ol>
+          <ol id="selBoard" class="board"></ol>
+        </div>
+      </div>
+      <div class="center">
+        <button id="endBtn" class="btn ghost">Quiz beëindigen</button>
+      </div>
+    </section>
+
+    <!-- VRAAG + ANTWOORD -->
+    <section id="v-question" class="view" hidden>
+      <div class="qhead">
+        <span id="qMeta" class="muted"></span>
+        <span id="timer" class="timer"></span>
+        <span id="answered" class="muted"></span>
+      </div>
+      <h1 id="qText" class="qtext"></h1>
+      <div id="qMedia" class="media" hidden></div>
+      <div id="qOptions" class="options"></div>
+
+      <div id="revealPanel" class="columns" hidden>
+        <div class="card grow" id="teamBoardCard">
+          <h2>Groepen</h2>
+          <ol id="qTeamBoard" class="board"></ol>
+        </div>
+        <div class="card grow">
+          <h2>Top 5</h2>
+          <ol id="qBoard" class="board"></ol>
+        </div>
+      </div>
+
+      <div class="center">
+        <button id="revealBtn" class="btn">Toon antwoord</button>
+        <button id="nextBtn" class="btn big" hidden>Volgende</button>
+      </div>
+    </section>
+
+    <!-- EINDE -->
+    <section id="v-end" class="view" hidden>
+      <h1>Eindstand</h1>
+      <div class="columns">
+        <div class="card grow" id="endTeamCard">
+          <h2>Groepen</h2>
+          <ol id="endTeamBoard" class="board"></ol>
+        </div>
+        <div class="card grow">
+          <h2>Spelers</h2>
+          <ol id="endBoard" class="board"></ol>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/quiz-data.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/host.js"></script>
+</body>
+</html>

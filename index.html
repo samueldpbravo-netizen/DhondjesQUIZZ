@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz – Meedoen</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="player">
+  <div id="banner" class="banner" hidden></div>
+
+  <header class="topbar" id="playerBar" hidden>
+    <strong id="meName"></strong>
+    <span id="meTeam" class="team-tag" hidden></span>
+    <span id="meScore" class="score-tag">0</span>
+  </header>
+
+  <main>
+    <section id="v-loading" class="view center">
+      <p id="loadingText">Bezig met laden…</p>
+    </section>
+
+    <!-- MEEDOEN -->
+    <section id="v-join" class="view center" hidden>
+      <h1>Doe mee met de quiz</h1>
+      <form id="joinForm" class="card form">
+        <label>Spelcode
+          <input id="pinInput" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required autocomplete="off">
+        </label>
+        <label>Jouw naam
+          <input id="nameInput" maxlength="16" placeholder="Naam" required autocomplete="off">
+        </label>
+        <p id="joinError" class="error" hidden></p>
+        <button class="btn big" id="joinBtn">Meedoen</button>
+      </form>
+      <p><a href="host.html" class="muted">Ik ben de host →</a></p>
+    </section>
+
+    <!-- LOBBY -->
+    <section id="v-lobby" class="view center" hidden>
+      <h1>Je doet mee!</h1>
+      <p class="muted">Wacht tot de host de quiz start.</p>
+      <div id="teamPick" class="card" hidden>
+        <h2>Kies je groep</h2>
+        <div id="teamButtons" class="team-buttons"></div>
+      </div>
+    </section>
+
+    <!-- WACHTEN TUSSEN RONDES -->
+    <section id="v-wait" class="view center" hidden>
+      <h1 id="waitTitle"></h1>
+      <p id="waitText" class="muted"></p>
+    </section>
+
+    <!-- VRAAG -->
+    <section id="v-question" class="view" hidden>
+      <div class="qhead">
+        <span id="qMeta" class="muted"></span>
+        <span id="timer" class="timer"></span>
+      </div>
+      <h2 id="qText" class="qtext"></h2>
+      <div id="qMedia" class="media" hidden></div>
+      <div id="qOptions" class="options"></div>
+      <p id="qStatus" class="status center" hidden></p>
+    </section>
+
+    <!-- RESULTAAT -->
+    <section id="v-result" class="view center" hidden>
+      <div id="resultIcon" class="result-icon"></div>
+      <h1 id="resultTitle"></h1>
+      <p id="resultPoints" class="points"></p>
+      <p id="resultAnswer" class="muted"></p>
+      <p id="resultRank"></p>
+    </section>
+
+    <!-- EINDE -->
+    <section id="v-end" class="view center" hidden>
+      <h1>Einde van de quiz</h1>
+      <p id="endRank" class="points"></p>
+      <p id="endScore"></p>
+      <p id="endTeam" class="muted"></p>
+    </section>
+  </main>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>

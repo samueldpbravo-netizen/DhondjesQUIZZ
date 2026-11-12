@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "games": {
+      "$pin": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
