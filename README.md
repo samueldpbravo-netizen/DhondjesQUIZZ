@@ -90,17 +90,18 @@ Voor meer spelers schakel je het Firebase-project over naar het Blaze-plan en ve
 2. Spelers gaan naar `https://<gebruikersnaam>.github.io/<repo>/`,
    de host naar `.../host.html`.
 
-## De vijf rondes
+## De zes rondes
 
 Alle instellingen (tijden, punten) staan in `js/quiz-data.js`.
 
 | Ronde | Hoe het werkt |
 | --- | --- |
 | 1. Algemene kennis | 15 vragen, max. 600 punten per vraag |
-| 2. Wie is het? | Iedereen schrijft op zijn gsm een hint over zichzelf (niet zichtbaar op het grote scherm). De helft van de spelers komt aan bod: hun hint verschijnt en de rest kiest wie het schreef. Wie geraden moet worden, krijgt voor die hint geen punten. |
-| 3. Teamspel | Iedereen kiest team 1 of team 2. Jullie spelen het spel in het echt; de host klikt daarna op het winnende team. Winnaars 3000 punten, verliezers 1000. |
-| 4. Verstoppertje | Iedereen tikt een verstopplek aan op de kaart. Daarna 5 minuten zoeken: tik waar je iemand vermoedt. 200 punten per gevonden persoon. |
-| 5. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
+| 2. Jong & online | 15 vragen over games, platformen en memes, max. 700 punten per vraag |
+| 3. Wie is het? | Iedereen maakt op zijn gsm een profiel: lievelingskleur (zelf te mengen), lievelingsdier, tot 4 eigenschappen en een kleine hint. Niets daarvan is zichtbaar op het grote scherm. De helft van de spelers komt aan bod: hun profiel verschijnt en de rest kiest wie het is. Wie geraden moet worden, krijgt voor dat profiel geen punten. |
+| 4. Teamspel | Iedereen kiest team 1 of team 2. Jullie spelen het spel in het echt; de host klikt daarna op het winnende team. Winnaars 3000 punten, verliezers 1000. |
+| 5. Verstoppertje | Iedereen tikt een verstopplek aan op de kaart. Daarna 5 minuten zoeken: tik waar je iemand vermoedt. 200 punten per gevonden persoon. |
+| 6. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
 
 Punten tellen altijd bij; er gaan nooit punten af.
 

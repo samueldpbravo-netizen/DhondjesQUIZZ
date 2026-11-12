@@ -28,8 +28,9 @@
   let endShown = false;
   let gameKey = '';
   let myAnswer = null; // { qn, v }
-  let myHint = sessionStorage.getItem(HINT_KEY) || '';
+  let myHint = null; // mijn profiel bij Wie is het?: { text, color, animal, traits, k, at }
   let editingHint = false;
+  let formOpen = false;
   let myPick = null; // { key, team }
   let allPlayers = {}; // alleen geladen voor de spelletjes die het nodig hebben
   let iq = {};
@@ -40,6 +41,7 @@
   try {
     myAnswer = JSON.parse(sessionStorage.getItem(ANS_KEY));
     myPick = JSON.parse(sessionStorage.getItem(PICK_KEY));
+    myHint = JSON.parse(sessionStorage.getItem(HINT_KEY));
   } catch (e) {}
 
   const path = (sub) => 'games/' + pin + (sub ? '/' + sub : '');
@@ -231,7 +233,7 @@
     if (title) fill($('#qStatus'), title, detail ? h('strong', {}, detail) : null);
   }
 
-  const isMyHint = (q) => q.type === 'who' && myHint && normalizeText(q.text) === normalizeText(myHint);
+  const isMyHint = (q) => q.type === 'who' && !!myHint && !!q.profile && !!q.profile.k && q.profile.k === myHint.k;
 
   function onTick() {
     const s = state;
@@ -367,7 +369,7 @@
       buildBody(q);
       setStatus('');
     }
-    if (isMyHint(q)) setStatus('Dit is jouw hint!', 'Sst… niets verklappen.');
+    if (isMyHint(q)) setStatus('Dit ben jij!', 'Sst… niets verklappen.');
     else if (answeredThis(s)) setStatus('Antwoord verstuurd!', describe(q, myAnswer.v));
     onTick();
   }
@@ -389,7 +391,8 @@
     } else if (q.type === 'who') {
       fill(
         body,
-        h('p', { class: 'hint' }, 'Wie schreef dit?'),
+        profileCard(q.profile),
+        h('p', { class: 'hint' }, 'Wie is dit?'),
         h(
           'div',
           { class: 'name-grid' },
@@ -518,32 +521,78 @@
 
     if (s.phase === 'whois-write') {
       if (first) {
-        setGame(s.roundName, 'Schrijf een hint over jezelf', 'Mysterieus, maar met een kleine aanwijzing. De anderen moeten raden dat jij het bent!', true);
+        setGame(s.roundName, 'Maak je profiel', 'Mysterieus, maar met kleine aanwijzingen. De anderen moeten raden dat jij het bent!', true);
         editingHint = false;
+        formOpen = false;
       }
-      if (!first && body.querySelector('textarea')) return; // niet storen tijdens het typen
-      if (myHint && !editingHint && s.startedAt === Number(sessionStorage.getItem(HINT_KEY + '-at'))) {
+      if (!first && formOpen) return; // niet storen tijdens het invullen
+      const mine = myHint && myHint.at === s.startedAt ? myHint : null;
+      if (mine && !editingHint) {
         fill(
           body,
-          h('p', { class: 'status' }, 'Je hint is verstuurd!', h('strong', {}, '“' + myHint + '”')),
-          plaque('button', { class: 'wide', type: 'button', onclick: () => ((editingHint = true), render()) }, 'Wijzig mijn hint')
+          h('p', { class: 'status' }, 'Je profiel is verstuurd!'),
+          profileCard(mine),
+          mine.text ? h('p', { class: 'center' }, '“' + mine.text + '”') : null,
+          plaque('button', { class: 'wide', type: 'button', onclick: () => ((editingHint = true), render()) }, 'Wijzig mijn profiel')
         );
       } else {
-        const area = h('textarea', { maxLength: 90, rows: 3, placeholder: 'Bv. "Ik heb ooit een marathon gelopen op klompen"' });
-        if (editingHint) area.value = myHint;
+        formOpen = true;
+        const old = mine || {};
+        const color = h('input', { type: 'color', class: 'color-input', value: old.color || '#d98a3c' });
+        const animal = h('input', { maxLength: 20, placeholder: 'Bv. kat, uil, dolfijn…', autocomplete: 'off', value: old.animal || '' });
+        const area = h('textarea', { maxLength: 90, rows: 2, placeholder: 'Bv. "Ik heb ooit een marathon gelopen op klompen"' });
+        area.value = old.text || '';
+        const picked = new Set(old.traits || []);
+        const max = s.maxTraits || 4;
+        const count = h('span', { class: 'muted' });
+        const paintCount = () => (count.textContent = ` (${picked.size} van ${max})`);
+        const chips = h(
+          'div',
+          { class: 'prof-traits pick' },
+          (s.traits || []).map((t) => {
+            const chip = h('button', { type: 'button', class: 'trait' + (picked.has(t) ? ' on' : '') }, t);
+            chip.onclick = () => {
+              if (picked.has(t)) picked.delete(t);
+              else if (picked.size < max) picked.add(t);
+              else return FX.shake(chip);
+              chip.classList.toggle('on', picked.has(t));
+              SFX.click();
+              paintCount();
+            };
+            return chip;
+          })
+        );
+        paintCount();
         const send = (e) => {
           e.preventDefault();
-          const text = area.value.trim();
-          if (text.length < 3) return FX.shake(area);
-          myHint = text;
+          myHint = {
+            text: area.value.trim(),
+            color: color.value,
+            animal: animal.value.trim(),
+            traits: [...picked],
+            k: Math.random().toString(36).slice(2, 10),
+            at: s.startedAt
+          };
           editingHint = false;
-          sessionStorage.setItem(HINT_KEY, text);
-          sessionStorage.setItem(HINT_KEY + '-at', s.startedAt);
-          Store.set(path('whois/hints/' + pid), text);
+          formOpen = false;
+          sessionStorage.setItem(HINT_KEY, JSON.stringify(myHint));
+          const { at, ...pub } = myHint;
+          Store.set(path('whois/hints/' + pid), pub);
           SFX.send();
           render();
         };
-        fill(body, h('form', { onsubmit: send }, area, plaque('button', { class: 'wide' }, 'Verstuur mijn hint')));
+        fill(
+          body,
+          h(
+            'form',
+            { class: 'profile-form', onsubmit: send },
+            h('label', {}, 'Mijn lievelingskleur', h('div', { class: 'color-row' }, color, h('span', { class: 'muted' }, 'Tik om zelf een kleur te mengen'))),
+            h('label', {}, 'Mijn lievelingsdier', animal),
+            h('div', { class: 'field' }, h('span', {}, 'Dit past bij mij', count), chips),
+            h('label', {}, 'Een kleine hint over mezelf (mag leeg blijven)', area),
+            plaque('button', { class: 'wide' }, 'Verstuur mijn profiel')
+          )
+        );
       }
     } else if (s.phase === 'teams-pick') {
       if (first) setGame(s.roundName, 'Kies je team', 'Het winnende team krijgt de meeste punten.');

@@ -246,7 +246,8 @@
       pub.hint = q.hint || null;
     }
     if (type === 'who') {
-      pub.label = 'Hint';
+      pub.label = 'Profiel';
+      pub.profile = q.profile || null;
       pub.names = Object.keys(players())
         .sort(byName)
         .map((id) => ({ id, name: nameOf(id) }));
@@ -300,7 +301,7 @@
       const prev = (scores()[id] && scores()[id].total) || 0;
       if (q.type === 'who' && id === q.correct) {
         // Wie geraden moet worden, krijgt zelf geen punten.
-        upd['scores/' + id] = { total: prev, last: 0, lastQn: s.qn, frac: 0, answered: false, msg: 'Dat was jouw hint!' };
+        upd['scores/' + id] = { total: prev, last: 0, lastQn: s.qn, frac: 0, answered: false, msg: 'Dat was jouw profiel!' };
         continue;
       }
       const a = answers[id];
@@ -400,13 +401,18 @@
   function startWhois(round) {
     Store.update(path(), {
       whois: null,
-      state: baseState(round, 'whois-write', { startedAt: Store.now(), duration: round.writeSeconds || 90 })
+      state: baseState(round, 'whois-write', {
+        startedAt: Store.now(),
+        duration: round.writeSeconds || 120,
+        traits: round.traits || [],
+        maxTraits: round.maxTraits || 4
+      })
     });
   }
 
   function whoisHints() {
     const hints = (game.whois && game.whois.hints) || {};
-    return Object.keys(hints).filter((id) => players()[id] && String(hints[id]).trim());
+    return Object.keys(hints).filter((id) => players()[id] && hints[id] && typeof hints[id] === 'object');
   }
   const whoisCount = (round) => Math.max(1, Math.ceil(Object.keys(players()).length * (round.share || 0.5)));
 
@@ -426,7 +432,13 @@
       wrongPoints: Math.round(max * (round.wrongShare || 0)),
       questions: chosen.map((id) => ({
         type: 'who',
-        text: String(game.whois.hints[id]).trim(),
+        text: String(game.whois.hints[id].text || '').trim() || 'Wie is dit?',
+        profile: {
+          color: game.whois.hints[id].color || null,
+          animal: game.whois.hints[id].animal || null,
+          traits: game.whois.hints[id].traits || [],
+          k: game.whois.hints[id].k || null
+        },
         correct: id,
         correctName: nameOf(id),
         duration: round.guessSeconds || 20
@@ -774,7 +786,7 @@
 
     $('#revealBtn').hidden = isReveal;
     $('#boardBtn').hidden = !isReveal;
-    $('#boardBtn .plaque-text').textContent = round.fast && s.qIndex + 1 < s.qTotal ? 'Volgende hint' : 'Stand';
+    $('#boardBtn .plaque-text').textContent = round.fast && s.qIndex + 1 < s.qTotal ? 'Volgende' : 'Stand';
     $('#timerBox').hidden = isReveal;
     $('#fuse').parentElement.hidden = isReveal;
 
@@ -828,7 +840,7 @@
         h('div', { class: 'order-list' }, q.items.map((it) => plaque('div', { class: 'order-item' }, it)))
       );
     } else if (q.type === 'who') {
-      fill(body, h('p', { class: 'hint' }, 'Wie schreef dit? Kies de juiste naam op je gsm.'));
+      fill(body, profileCard(q.profile), h('p', { class: 'hint' }, 'Wie is dit? Kies de juiste naam op je gsm.'));
     }
   }
 
@@ -975,8 +987,8 @@
       if (first) {
         setGame({
           name: s.roundName,
-          title: 'Schrijf een mysterieuze hint over jezelf',
-          sub: 'Typ op je gsm iets waaraan de anderen jou kunnen herkennen. Verklap niet te veel!',
+          title: 'Maak een mysterieus profiel van jezelf',
+          sub: 'Kies op je gsm je lievelingskleur, je lievelingsdier en wat bij je past, en schrijf een kleine hint. Verklap niet te veel!',
           btn: 'Start het raden',
           onBtn: startGuessing,
           timer: true
@@ -984,9 +996,9 @@
       }
       fill(
         body,
-        plaque('div', { class: 'answer-big' }, `${ids.length} / ${total} hints binnen`),
+        plaque('div', { class: 'answer-big' }, `${ids.length} / ${total} profielen binnen`),
         h('div', { class: 'names' }, ids.sort(byName).map((id) => plaque('div', { class: 'name' }, nameOf(id)))),
-        h('p', { class: 'hint' }, `Niet iedereen komt aan bod: we raden ${Math.min(whoisCount(round), Math.max(1, ids.length))} hints.`)
+        h('p', { class: 'hint' }, `Niet iedereen komt aan bod: we raden ${Math.min(whoisCount(round), Math.max(1, ids.length))} profielen.`)
       );
       $('#gBtn').disabled = !ids.length;
       if (total && ids.length >= total) $('#gBtn').classList.add('ready');

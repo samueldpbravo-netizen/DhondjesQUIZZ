@@ -4,7 +4,7 @@
 //  De quiz bestaat uit rondes. Elke ronde heeft een soort (kind):
 //
 //   'quiz'   gewone vragen (zie hieronder)
-//   'whois'  Wie is het? Iedereen schrijft een hint over zichzelf, de rest raadt wie het is.
+//   'whois'  Wie is het? Iedereen maakt een profiel (kleur, dier, eigenschappen, hint), de rest raadt wie het is.
 //   'teams'  Teamspel: iedereen kiest een team, de host duidt het winnende team aan.
 //   'hide'   Verstoppertje op de kaart.
 //   'iq'     IQ-test: 5 minuten puzzels oplossen, alleen of in een groepje.
@@ -164,18 +164,134 @@ window.QUIZ = {
 
     // ===================== RONDE 2 =====================
     {
+      id: 'jeugd',
+      kind: 'quiz',
+      name: 'Jong & online',
+      maxPoints: 700,
+      questions: [
+        {
+          type: 'choice',
+          text: 'Welke van deze games is het meest verkocht?',
+          options: ['Grand Theft Auto V', 'Minecraft', 'Red Dead Redemption 2', 'Mario Kart 8'],
+          correct: 1,
+          duration: 20
+        },
+        {
+          type: 'text',
+          text: 'In welke game zoek je de "impostor" op een ruimteschip?',
+          answers: ['Among Us', 'Amongus'],
+          duration: 30
+        },
+        {
+          type: 'choice',
+          text: 'Wat betekent "GG" op het einde van een game?',
+          options: ['Ga gauw', 'Good game', 'Geen genade', 'Get good'],
+          correct: 1,
+          duration: 15
+        },
+        {
+          type: 'order',
+          text: 'Welk platform bestond het eerst?',
+          hint: 'van oud naar nieuw',
+          items: ['YouTube', 'Instagram', 'Snapchat', 'TikTok'],
+          duration: 35
+        },
+        {
+          type: 'choice',
+          text: 'Hoe heet het geld in Fortnite?',
+          options: ['Robux', 'Minecoins', 'V-Bucks', 'Gems'],
+          correct: 2,
+          duration: 15
+        },
+        {
+          type: 'text',
+          text: 'Raad de game:  🍄 👨‍🔧 🏰 👸',
+          answers: ['Super Mario', 'Mario', 'Super Mario Bros', 'Mario Bros'],
+          duration: 30
+        },
+        {
+          type: 'choice',
+          text: 'Welk YouTube-kanaal heeft de meeste abonnees ter wereld?',
+          options: ['PewDiePie', 'T-Series', 'MrBeast', 'Cocomelon'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          type: 'number',
+          text: 'In welk jaar kwam Fortnite Battle Royale uit?',
+          correct: 2017,
+          tolerance: 5,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Iemand heeft veel "rizz". Wat heeft die persoon?',
+          options: ['Veel charme om iemand te versieren', 'Veel slaap nodig', 'Veel volgers', 'Veel geluk bij het gamen'],
+          correct: 0,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Op welk platform begon "Skibidi Toilet"?',
+          options: ['TikTok', 'Twitch', 'Snapchat', 'YouTube'],
+          correct: 3,
+          duration: 20
+        },
+        {
+          type: 'order',
+          text: 'Welke game kwam het eerst uit?',
+          hint: 'van oud naar nieuw',
+          items: ['Minecraft', 'Grand Theft Auto V', 'Fortnite', 'Among Us'],
+          duration: 35
+        },
+        {
+          type: 'choice',
+          text: 'Jongeren roepen "six-seven!" (6-7). Wat betekent het?',
+          options: ['Een cheatcode in Roblox', 'Eigenlijk niets, het is gewoon een meme', 'Een score in EA FC', 'Het is tijd om te eten'],
+          correct: 1,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welke "Italian brainrot"-figuur is een ballerina met een kopje koffie als hoofd?',
+          options: ['Tralalero Tralala', 'Tung Tung Tung Sahur', 'Ballerina Cappuccina', 'Bombardiro Crocodilo'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          type: 'number',
+          text: 'Hoeveel spelers starten in één klassieke match van Fortnite Battle Royale?',
+          correct: 100,
+          tolerance: 60,
+          duration: 20
+        },
+        {
+          type: 'text',
+          text: 'Op welk gameplatform betaal je met Robux?',
+          answers: ['Roblox'],
+          duration: 25
+        }
+      ]
+    },
+
+    // ===================== RONDE 3 =====================
+    {
       id: 'wieishet',
       kind: 'whois',
       name: 'Wie is het?',
-      desc: 'Schrijf een mysterieuze hint over jezelf',
-      writeSeconds: 90, // tijd om een hint te schrijven
+      desc: 'Maak een mysterieus profiel van jezelf',
+      // Eigenschappen die spelers kunnen aanzetten (ze kiezen er hoogstens maxTraits)
+      traits: ['Sportief', 'Creatief', 'Jong', 'Oud', 'Grappig', 'Rustig', 'Luid', 'Slim', 'Koppig', 'Zoetekauw',
+        'Vroege vogel', 'Nachtuil', 'Muzikaal', 'Gamer', 'Avontuurlijk', 'Huismus', 'Keukenprins(es)', 'Dierenvriend'],
+      maxTraits: 4,
+      writeSeconds: 120, // tijd om je profiel in te vullen
       guessSeconds: 20, // tijd om te raden, per hint
       share: 0.5, // de helft van de spelers komt aan bod
       totalPoints: 12000, // samen te verdienen over alle hints (per hint max. 1000)
       wrongShare: 0.1 // fout geraden: 10% van de punten als troost
     },
 
-    // ===================== RONDE 3 =====================
+    // ===================== RONDE 4 =====================
     {
       id: 'teamspel',
       kind: 'teams',
@@ -186,7 +302,7 @@ window.QUIZ = {
       losePoints: 1000
     },
 
-    // ===================== RONDE 4 =====================
+    // ===================== RONDE 5 =====================
     {
       id: 'verstoppertje',
       kind: 'hide',
@@ -199,7 +315,7 @@ window.QUIZ = {
       radius: 4 // hoe dicht je moet tikken, in % van de kaartbreedte
     },
 
-    // ===================== RONDE 5 =====================
+    // ===================== RONDE 6 =====================
     {
       id: 'iqtest',
       kind: 'iq',

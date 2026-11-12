@@ -123,6 +123,24 @@ function pctPin(p, i) {
   );
 }
 
+// Het profiel van "Wie is het?": lievelingskleur, lievelingsdier en eigenschappen.
+function profileCard(p) {
+  if (!p) return null;
+  const items = [];
+  if (/^#[0-9a-f]{6}$/i.test(p.color || '')) {
+    items.push(h('div', { class: 'prof-item' }, h('span', { class: 'prof-label' }, 'Lievelingskleur'), h('span', { class: 'swatch', style: 'background:' + p.color })));
+  }
+  if (p.animal) items.push(h('div', { class: 'prof-item' }, h('span', { class: 'prof-label' }, 'Lievelingsdier'), h('strong', {}, p.animal)));
+  const traits = p.traits || [];
+  if (!items.length && !traits.length) return null;
+  return h(
+    'div',
+    { class: 'profile' },
+    items.length ? h('div', { class: 'prof-row' }, items) : null,
+    traits.length ? h('div', { class: 'prof-traits' }, traits.map((t, i) => h('span', { class: 'trait on', style: `animation-delay:${i * 120}ms` }, t))) : null
+  );
+}
+
 // Tijd als m:ss
 function clock(sec) {
   sec = Math.max(0, Math.ceil(sec));
