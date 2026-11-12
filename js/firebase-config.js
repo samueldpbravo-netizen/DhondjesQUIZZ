@@ -1,24 +1,17 @@
 // ---------------------------------------------------------------
 //  FIREBASE INSTELLINGEN
 // ---------------------------------------------------------------
-//  Zolang FIREBASE_CONFIG = null draait de quiz in DEMO-MODUS:
-//  alles werkt, maar alleen tussen tabbladen van dezelfde browser.
-//
-//  Om echt met 50 mensen te spelen:
-//   1. Maak een project op https://console.firebase.google.com
-//   2. Build > Realtime Database > "Create database"
-//   3. Projectinstellingen > "Jouw apps" > web-app (</>) toevoegen
-//   4. Plak de config hieronder (zie README.md voor alle stappen)
+//  De quiz gebruikt de Realtime Database van dit Firebase-project.
+//  Zet FIREBASE_CONFIG op null om in DEMO-MODUS te testen
+//  (dan werkt alles alleen tussen tabbladen van dezelfde browser).
 // ---------------------------------------------------------------
 
-window.FIREBASE_CONFIG = null;
-
-/* Voorbeeld:
 window.FIREBASE_CONFIG = {
-  apiKey: "AIza...",
-  authDomain: "mijn-quiz.firebaseapp.com",
-  databaseURL: "https://mijn-quiz-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "mijn-quiz",
-  appId: "1:1234567890:web:abcdef"
+  apiKey: "AIzaSyD1akQYkApMVSldPx3AC5hdi8IT_YmWrh4",
+  authDomain: "quizz-5db36.firebaseapp.com",
+  databaseURL: "https://quizz-5db36-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "quizz-5db36",
+  storageBucket: "quizz-5db36.firebasestorage.app",
+  messagingSenderId: "596075013039",
+  appId: "1:596075013039:web:e78b566ce92eda7b38855a"
 };
-*/
