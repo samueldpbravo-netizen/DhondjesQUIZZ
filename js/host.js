@@ -235,7 +235,9 @@
   // Eerst de uitlegpagina, dan pas de ronde zelf.
   function explainRound(round, i) {
     if (!round.explain || !round.explain.length) return startRound(round);
-    Store.set(path('state'), baseState(round, 'explain', { num: i + 1, steps: round.explain }));
+    // Het rondenummer volgt de volgorde die de host kiest.
+    const num = Object.keys(game.played || {}).filter((id) => id !== round.id).length + 1;
+    Store.set(path('state'), baseState(round, 'explain', { num, steps: round.explain }));
   }
 
   function startRound(round) {
@@ -349,7 +351,7 @@
   function solutionOf(q) {
     switch (q.type || 'choice') {
       case 'choice':
-        return { correct: q.correct };
+        return { correct: q.correct, all: !!q.allCorrect };
       case 'text':
         return { answer: q.answers[0] };
       case 'number':
@@ -931,7 +933,7 @@
                 explainRound(round, i);
               }
             },
-            `${i + 1}. ${round.name}`,
+            round.name,
             h('small', {}, done ? 'gespeeld' : !n ? 'binnenkort' : isQuiz ? n + ' vragen' : round.desc || '')
           );
         })
@@ -1053,8 +1055,9 @@
 
     if (q.type === 'choice') {
       document.querySelectorAll('#qBody .option').forEach((el, i) => {
-        el.classList.toggle('correct', i === sol.correct);
-        el.classList.toggle('dim', i !== sol.correct);
+        const ok = sol.all || i === sol.correct;
+        el.classList.toggle('correct', ok);
+        el.classList.toggle('dim', !ok);
         el.querySelector('.count').textContent = ids.filter((id) => answers[id].v === i).length;
         if (i === sol.correct) sparkTarget = el;
       });

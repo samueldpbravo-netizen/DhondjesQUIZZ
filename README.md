@@ -94,6 +94,8 @@ Voor meer spelers schakel je het Firebase-project over naar het Blaze-plan en ve
 
 Alle instellingen (tijden, punten, uitlegteksten) staan in `js/quiz-data.js`.
 Voor elke ronde komt eerst een uitlegpagina met drie stappen op het grote scherm.
+De host kiest zelf de volgorde: klik in het keuzescherm op de ronde die je nu wilt spelen.
+Het rondenummer op de uitlegpagina volgt die volgorde.
 
 | Ronde | Hoe het werkt |
 | --- | --- |
@@ -103,7 +105,7 @@ Voor elke ronde komt eerst een uitlegpagina met drie stappen op het grote scherm
 | 4. Teamspel | Iedereen kiest team 1 of team 2. Jullie spelen het spel in het echt; de host klikt daarna op het winnende team. Winnaars 3000 punten, verliezers 1000. |
 | 5. Ver van iedereen | Iedereen kiest een plek op het land op een draaibare wereldbol. Wie het verst van zijn dichtste buur zit, krijgt 2000 punten; de rest naar verhouding. |
 | 6. Heb je wel opgelet? | Vragen over het weekend en de hoeve. Vier vragen vullen zichzelf in: hoeveel mensen zijn er ingelogd, wat was de vorige vraag, welk team won het teamspel, wie staat er eerste. Vul zelf aan met wat er gebeurd is. |
-| 7. Ken je de familie? | 14 vragen met weetjes over de familie. |
+| 7. Ken je de familie? | 17 vragen met weetjes over de familie. Bij twee vragen telt elk antwoord als juist (`allCorrect: true`). |
 | 8. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
 
 ### Extra's tijdens het spel

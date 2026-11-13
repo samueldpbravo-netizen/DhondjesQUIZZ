@@ -240,7 +240,7 @@ function judgeAnswer(q, v) {
   switch (q.type || 'choice') {
     case 'choice':
     case 'who':
-      return { frac: v === q.correct ? 1 : 0 };
+      return { frac: q.allCorrect || v === q.correct ? 1 : 0 };
     case 'text':
       return { frac: textMatches(v, q.answers) ? 1 : 0 };
     case 'number': {
@@ -278,7 +278,7 @@ function solutionText(question, sol) {
   if (!sol) return '';
   switch (question.type) {
     case 'choice':
-      return question.options[sol.correct];
+      return sol.all ? 'elk antwoord was goed!' : question.options[sol.correct];
     case 'text':
       return sol.answer;
     case 'number':

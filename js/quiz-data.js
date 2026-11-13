@@ -27,6 +27,7 @@
 //
 //   'choice'    meerkeuze
 //               options: ['A', 'B', 'C', 'D'], correct: 1   (0 = eerste)
+//               allCorrect: true              (optioneel: elk antwoord telt als juist)
 //
 //   'text'      zelf typen; alle antwoorden verschijnen op het grote scherm
 //               answers: ['Namen', 'Namur']   (alle goedgekeurde antwoorden;
@@ -417,7 +418,14 @@ window.QUIZ = {
           answers: ['Ieperstraat', 'Ieperstraat 157', 'Ieper straat'],
           duration: 30
         },
-        { dynamic: 'leader' }
+        { dynamic: 'leader' },
+        {
+          type: 'choice',
+          text: 'Tot wanneer duurt dit familieweekend?',
+          options: ['Zaterdagavond', 'Zondagmiddag', 'Zondagavond', 'Maandagochtend'],
+          correct: 1,
+          duration: 15
+        }
 
         // ---- Vul hier zelf aan met wat er dit weekend gebeurd is. Voorbeelden: ----
         // {
@@ -549,11 +557,36 @@ window.QUIZ = {
         },
         {
           type: 'choice',
-          text: 'Wie staat er helemaal niet graag vooraan?',
-          options: ['Hasse', 'Freki', 'Lore', 'Isaac'],
+          text: 'Welke sport doet Samuel tegenwoordig?',
+          options: ['Basket', 'Geen enkele meer', 'Kickboksen', 'Handbal'],
+          correct: 1,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Wat is de achternaam van Sergio en Osvaldo?',
+          options: ['Pereira', 'Segers', 'Felipe', 'Dhondt'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          // Elk antwoord telt als juist; daarna komt de opdracht groot op het scherm.
+          type: 'choice',
+          text: 'De quizmaster heeft dringend een assistent nodig. Wie wordt het?',
+          options: ['Hasse', 'Hasse', 'Hasse', 'Zeker en vast Hasse'],
           correct: 0,
+          allCorrect: true,
           duration: 15,
-          note: 'Hasse, kom maar naar voren voor een groot applaus!'
+          note: 'Hasse, kom maar naar voren! Jij bent vanaf nu de assistent van de quizmaster.'
+        },
+        {
+          type: 'choice',
+          text: 'Eerlijk zeggen: hoe leuk is deze quiz?',
+          options: ['Superleuk', 'Megaleuk', 'De beste ooit', 'Alle drie tegelijk'],
+          correct: 3,
+          allCorrect: true,
+          duration: 15,
+          note: 'Juist antwoord. Bedankt, Samuel!'
         }
       ]
     },
