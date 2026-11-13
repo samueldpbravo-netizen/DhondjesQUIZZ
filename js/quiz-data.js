@@ -6,11 +6,22 @@
 //   'quiz'   gewone vragen (zie hieronder)
 //   'whois'  Wie is het? Iedereen maakt een profiel (kleur, dier, eigenschappen, hint), de rest raadt wie het is.
 //   'teams'  Teamspel: iedereen kiest een team, de host duidt het winnende team aan.
-//   'hide'   Verstoppertje op de kaart.
+//   'globe'  Ver van iedereen: kies een plek op de wereldbol, zo ver mogelijk van de rest.
+//   'hide'   Verstoppertje op een kaart (staat niet meer in de lijst, maar werkt nog).
 //   'iq'     IQ-test: 5 minuten puzzels oplossen, alleen of in een groepje.
 //            De puzzels zelf staan in js/iq-puzzles.js.
 //
 //  Punten tellen altijd bij; er gaan nooit punten af.
+//
+//  Elke ronde kan een uitlegpagina krijgen die vóór de ronde op het grote scherm komt:
+//    explain: ['Stap 1…', 'Stap 2…', 'Stap 3…']
+//
+//  ---- Vragen die zichzelf invullen (dynamic) ----
+//  In een 'quiz'-ronde mag je in plaats van een gewone vraag ook dit zetten:
+//    { dynamic: 'playerCount' }        hoeveel mensen zijn er ingelogd? (getal raden)
+//    { dynamic: 'previousQuestion' }   wat was de vorige vraag? (meerkeuze)
+//    { dynamic: 'leader' }             wie staat er nu op de eerste plaats? (meerkeuze)
+//    { dynamic: 'teamWinner' }         welk team won het teamspel? (alleen als het gespeeld is)
 //
 //  ---- Soorten vragen in een 'quiz'-ronde (type) ----
 //
@@ -36,6 +47,7 @@
 //  Voor elke vraag:
 //    text      de vraag
 //    duration  aantal seconden (standaard 25)
+//    note      optioneel: een zinnetje dat na het antwoord groot op het scherm komt
 //    media     optioneel: { type: 'image' | 'video' | 'audio', src: 'media/bestand.jpg' }
 //
 //  Dit bestand wordt alleen door het host-scherm geladen.
@@ -43,12 +55,18 @@
 
 window.QUIZ = {
   title: 'Dhondjes Quiz',
+  subtitle: 'Familieweekend bij de Schone Schaapjes in Staden',
   rounds: [
     // ===================== RONDE 1 =====================
     {
       id: 'algemeen',
       kind: 'quiz',
       name: 'Algemene kennis',
+      explain: [
+        'Op het grote scherm verschijnt een vraag. Antwoord op je gsm.',
+        'Soms kies je een antwoord, soms typ je, duid je een plek aan of zet je dingen in volgorde.',
+        'Juist én snel? Dan krijg je de meeste punten!'
+      ],
       maxPoints: 600, // per vraag; bewust iets minder dan de familiespelletjes
       questions: [
         {
@@ -167,6 +185,11 @@ window.QUIZ = {
       id: 'jeugd',
       kind: 'quiz',
       name: 'Jong & online',
+      explain: [
+        'Games, memes en platformen: dit is de ronde van de jeugd.',
+        'Oma en opa mogen gokken. Of stiekem naar de kleinkinderen kijken.',
+        'Juist én snel? Dan krijg je de meeste punten!'
+      ],
       maxPoints: 700,
       questions: [
         {
@@ -270,6 +293,13 @@ window.QUIZ = {
           text: 'Op welk gameplatform betaal je met Robux?',
           answers: ['Roblox'],
           duration: 25
+        },
+        {
+          type: 'choice',
+          text: 'Wie speelt de meesterdief Assane Diop in de Netflix-serie "Lupin"?',
+          options: ['Omar Sy', 'Idris Elba', 'Vincent Cassel', 'Matthias Schoenaerts'],
+          correct: 0,
+          duration: 20
         }
       ]
     },
@@ -279,6 +309,11 @@ window.QUIZ = {
       id: 'wieishet',
       kind: 'whois',
       name: 'Wie is het?',
+      explain: [
+        'Maak op je gsm een profiel: je lievelingskleur, je lievelingsdier, wat bij je past en een kleine hint.',
+        'De helft van de profielen komt op het grote scherm. Iedereen raadt: wie is dit?',
+        'Goed geraden geeft punten. Is het jouw profiel? Sst… laat niets merken!'
+      ],
       desc: 'Maak een mysterieus profiel van jezelf',
       // Eigenschappen die spelers kunnen aanzetten (ze kiezen er hoogstens maxTraits)
       traits: ['Sportief', 'Creatief', 'Jong', 'Oud', 'Grappig', 'Rustig', 'Luid', 'Slim', 'Koppig', 'Zoetekauw',
@@ -296,6 +331,11 @@ window.QUIZ = {
       id: 'teamspel',
       kind: 'teams',
       name: 'Teamspel',
+      explain: [
+        'Kies op je gsm: team 1 of team 2.',
+        'We spelen samen een spel in het echt. Doe je best voor je team!',
+        'Het winnende team krijgt 3000 punten per persoon, het andere team 1000.'
+      ],
       desc: 'Kies team 1 of team 2',
       teamNames: ['Team 1', 'Team 2'],
       winPoints: 3000,
@@ -304,22 +344,230 @@ window.QUIZ = {
 
     // ===================== RONDE 5 =====================
     {
-      id: 'verstoppertje',
-      kind: 'hide',
-      name: 'Verstoppertje',
-      desc: 'Verstop je op de kaart en zoek de anderen',
-      map: 'media/gebied.jpg', // zet hier je eigen kaart (bv. een schermafbeelding van Google Maps)
-      placeSeconds: 60, // tijd om je te verstoppen
-      seekSeconds: 300, // tijd om te zoeken (5 minuten)
-      findPoints: 200, // per gevonden persoon
-      radius: 4 // hoe dicht je moet tikken, in % van de kaartbreedte
+      id: 'wereldbol',
+      kind: 'globe',
+      name: 'Ver van iedereen',
+      desc: 'Kies een plek op de wereldbol',
+      explain: [
+        'Draai de wereldbol op je gsm en tik op een plek op het land. Water telt niet!',
+        'Het doel: zo ver mogelijk van alle anderen zitten. Waar zou niemand anders kiezen?',
+        'Wie het verst van zijn dichtste buur zit, krijgt de meeste punten.'
+      ],
+      seconds: 60,
+      maxPoints: 2000 // voor wie het verst van iedereen zit; de rest krijgt naar verhouding
     },
 
     // ===================== RONDE 6 =====================
+    // Heb je wel opgelet dit weekend? Vul hier zelf vragen bij over wat er gebeurd is.
+    // De feiten over de hoeve komen van toeristische websites: kijk ze ter plaatse even na.
+    {
+      id: 'opgelet',
+      kind: 'quiz',
+      name: 'Heb je wel opgelet?',
+      maxPoints: 1000,
+      explain: [
+        'Deze ronde gaat over dit weekend zelf: de plek, de mensen en wat er gebeurd is.',
+        'Wie overal bij was en goed oplette, heeft nu een voordeel.',
+        'Juist én snel? Dan krijg je de meeste punten!'
+      ],
+      questions: [
+        {
+          type: 'choice',
+          text: 'Wat is de officiële naam van de vakantiehoeve waar we logeren?',
+          options: ['De Schone Schaapjes', 'Open Huis', "'t Schaapshof", 'Hoeve De Doontjes'],
+          correct: 1,
+          duration: 20
+        },
+        { dynamic: 'playerCount' },
+        {
+          type: 'location',
+          text: 'Waar ligt Staden?',
+          map: 'belgie',
+          lat: 50.975,
+          lon: 3.014,
+          label: 'Staden',
+          duration: 25
+        },
+        {
+          type: 'choice',
+          text: 'Wat kun je op deze hoeve NIET doen?',
+          options: ['Zwemmen in een vijver', 'Vissen', 'Skiën', 'Wandelen in de boomgaard'],
+          correct: 2,
+          duration: 20
+        },
+        { dynamic: 'previousQuestion' },
+        {
+          type: 'number',
+          text: 'Hoeveel mensen kunnen er op deze hoeve in totaal blijven slapen?',
+          correct: 60,
+          tolerance: 40,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'In welk tv-programma was deze hoeve te zien?',
+          options: ['Boer zkt Vrouw', 'Met Vier in Bed', 'Komen Eten', 'Huizenjagers'],
+          correct: 1,
+          duration: 20
+        },
+        { dynamic: 'teamWinner' },
+        {
+          type: 'text',
+          text: 'In welke straat ligt de hoeve?',
+          answers: ['Ieperstraat', 'Ieperstraat 157', 'Ieper straat'],
+          duration: 30
+        },
+        { dynamic: 'leader' }
+
+        // ---- Vul hier zelf aan met wat er dit weekend gebeurd is. Voorbeelden: ----
+        // {
+        //   type: 'number',
+        //   text: 'Hoeveel mensen zijn er dit weekend in totaal?',
+        //   correct: 48,
+        //   tolerance: 15
+        // },
+        // {
+        //   type: 'choice',
+        //   text: 'Wat aten we vrijdagavond?',
+        //   options: ['Spaghetti', 'Frietjes', 'Barbecue', 'Pizza'],
+        //   correct: 0
+        // },
+        // {
+        //   type: 'text',
+        //   text: 'Wie viel er zaterdag in de vijver?',
+        //   answers: ['Jos']
+        // }
+      ]
+    },
+
+    // ===================== RONDE 7 =====================
+    // Ken je de familie wel goed? Deze ronde verschijnt als "binnenkort" tot er vragen in staan.
+    {
+      id: 'familie',
+      kind: 'quiz',
+      name: 'Ken je de familie?',
+      maxPoints: 1000,
+      explain: [
+        'Deze ronde gaat over de familie zelf: grappige verhalen en weetjes.',
+        'Wie kent de Dhondjes (en de Segers, de Pereira\'s en alle anderen) het best?',
+        'Juist én snel? Dan krijg je de meeste punten!'
+      ],
+      questions: [
+        {
+          type: 'choice',
+          text: 'Wie zette ooit een zak chips in de koelkast?',
+          options: ['Bart', 'Wim', 'Robin', 'Sergio'],
+          correct: 1,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Wie vergat op een familiefeest zijn eigen leeftijd?',
+          options: ['Wim', 'Osvaldo', 'Bart', 'Jasper'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welk huisdier komt het meest voor in de familie?',
+          options: ['Kat', 'Konijn', 'Goudvis', 'Hond'],
+          correct: 3,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Welke twee hebben een gigantisch hoog schaak-elo?',
+          options: ['Wim en Bart', 'Jasper en Lore', 'Sergio en Osvaldo', 'Isaac en Hasse'],
+          correct: 2,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welke sport doet Nathan?',
+          options: ['Basket', 'Handbal', 'Dansen', 'Kickboksen'],
+          correct: 3,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Waar of niet waar: Aaron heeft ooit geprobeerd een basketbal op te eten.',
+          options: ['Waar', 'Niet waar'],
+          correct: 1,
+          duration: 15,
+          note: 'Niet waar… voor zover we weten.'
+        },
+        {
+          type: 'choice',
+          text: 'Welke sport doen Jasper en Lore?',
+          options: ['Handbal', 'Basket', 'Kickboksen', 'Volleybal'],
+          correct: 0,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Wie van deze vier doet GEEN basket?',
+          options: ['Isaac', 'Hasse', 'Robin', 'Freki'],
+          correct: 2,
+          duration: 20,
+          note: 'Robin danst!'
+        },
+        {
+          type: 'choice',
+          text: 'Wie zwemt er ondersteboven?',
+          options: ['Camil', 'Ines', 'Aaron', 'Lore'],
+          correct: 0,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Waar of niet waar: Ines deed een backflip van een gebouw van 4 verdiepingen.',
+          options: ['Waar', 'Niet waar'],
+          correct: 1,
+          duration: 15,
+          note: 'Niet waar. Niet thuis proberen!'
+        },
+        {
+          type: 'choice',
+          text: 'Wie heeft de luidste scheten van de familie?',
+          options: ['Samuel', 'Nathan', 'Jasper', 'Isaac'],
+          correct: 2,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Wie maakt elk jaar de familiequiz?',
+          options: ['Nathan', 'Samuel', 'Robin', 'Wim'],
+          correct: 1,
+          duration: 15
+        },
+        {
+          type: 'choice',
+          text: 'Wanneer werd deze quiz gemaakt?',
+          options: ['In de zomervakantie', 'Een maand geleden', 'Vorig jaar al', 'Vandaag, tussen school en het vertrek naar hier'],
+          correct: 3,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Wie staat er helemaal niet graag vooraan?',
+          options: ['Hasse', 'Freki', 'Lore', 'Isaac'],
+          correct: 0,
+          duration: 15,
+          note: 'Hasse, kom maar naar voren voor een groot applaus!'
+        }
+      ]
+    },
+
+    // ===================== RONDE 8 =====================
     {
       id: 'iqtest',
       kind: 'iq',
       name: 'IQ-test',
+      explain: [
+        'Vorm een groepje van maximaal 3, of speel alleen. Vraag iemand via je gsm.',
+        'Je krijgt 5 minuten en 50 puzzels. Kun je er eentje niet? Sla ze over!',
+        'Iedereen puzzelt op zijn eigen gsm. Je krijgt het gemiddelde van je groepje.'
+      ],
       desc: '5 minuten puzzelen, alleen of in een groepje',
       seconds: 300,
       groupMax: 3

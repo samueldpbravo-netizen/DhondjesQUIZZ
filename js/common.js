@@ -4,7 +4,7 @@
 // Met het Blaze-plan mag dit getal omhoog.
 const MAX_PLAYERS = 99;
 const DEFAULT_DURATION = 25;
-const INTRO_MS = 2600; // "Vraag 3"-aankondiging voor de timer start
+const INTRO_MS = 3600; // "Vraag 3"-aankondiging voor de timer start
 
 const TEAM_COLORS = ['#e8915a', '#7fb7d9', '#e6c65c', '#8fc98a', '#c79be0', '#e58fa8', '#6fcfb8', '#d8a06a'];
 
@@ -47,6 +47,41 @@ function plaque(tag, attrs, ...children) {
     h('span', { class: 'plaque-text' }, children),
     orn ? h('span', { class: 'gem right' }, '◆') : null
   );
+}
+
+// Zet een tekst letter per letter in een element, zodat de letters één voor één binnenvallen.
+function letters(el, text) {
+  el.replaceChildren(
+    ...[...String(text)].map((ch, i) => h('span', { class: 'letter', style: `animation-delay:${i * 55}ms` }, ch === ' ' ? '\u00a0' : ch))
+  );
+}
+
+// De aankondiging voor een vraag of spel: eerst de titel, dan aftellen 3 - 2 - 1.
+// remaining = milliseconden tot de start. Geeft true terug zolang de aankondiging zichtbaar is.
+let introShown = null;
+function introTick(remaining, label, sub) {
+  const el = $('#intro');
+  if (remaining <= 0) {
+    if (!el.hidden) el.hidden = true;
+    introShown = null;
+    return false;
+  }
+  const counting = remaining <= 2400;
+  const txt = counting ? String(Math.ceil(remaining / 800)) : label;
+  if (txt !== introShown) {
+    introShown = txt;
+    $('#introText').textContent = txt;
+    const subEl = $('#introSub');
+    if (subEl && sub != null) subEl.textContent = sub;
+    el.hidden = false;
+    const box = $('#introText').parentElement;
+    box.classList.toggle('digit', counting);
+    box.style.animation = 'none';
+    void box.offsetWidth;
+    box.style.animation = '';
+    if (counting && window.SFX) SFX.tick(txt === '1');
+  }
+  return true;
 }
 
 // Vult een element met kinderen; lege waarden (null/false) worden overgeslagen.

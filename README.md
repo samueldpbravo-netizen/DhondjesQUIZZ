@@ -90,25 +90,32 @@ Voor meer spelers schakel je het Firebase-project over naar het Blaze-plan en ve
 2. Spelers gaan naar `https://<gebruikersnaam>.github.io/<repo>/`,
    de host naar `.../host.html`.
 
-## De zes rondes
+## De acht rondes
 
-Alle instellingen (tijden, punten) staan in `js/quiz-data.js`.
+Alle instellingen (tijden, punten, uitlegteksten) staan in `js/quiz-data.js`.
+Voor elke ronde komt eerst een uitlegpagina met drie stappen op het grote scherm.
 
 | Ronde | Hoe het werkt |
 | --- | --- |
 | 1. Algemene kennis | 15 vragen, max. 600 punten per vraag |
-| 2. Jong & online | 15 vragen over games, platformen en memes, max. 700 punten per vraag |
-| 3. Wie is het? | Iedereen maakt op zijn gsm een profiel: lievelingskleur (zelf te mengen), lievelingsdier, tot 4 eigenschappen en een kleine hint. Niets daarvan is zichtbaar op het grote scherm. De helft van de spelers komt aan bod: hun profiel verschijnt en de rest kiest wie het is. Wie geraden moet worden, krijgt voor dat profiel geen punten. |
+| 2. Jong & online | 16 vragen over games, platformen, memes en series, max. 700 punten per vraag |
+| 3. Wie is het? | Iedereen maakt op zijn gsm een profiel: lievelingskleur (zelf te mengen), lievelingsdier, tot 4 eigenschappen en een kleine hint. De helft van de spelers komt aan bod: hun profiel verschijnt en de rest kiest wie het is. Wie geraden moet worden, krijgt voor dat profiel geen punten. |
 | 4. Teamspel | Iedereen kiest team 1 of team 2. Jullie spelen het spel in het echt; de host klikt daarna op het winnende team. Winnaars 3000 punten, verliezers 1000. |
-| 5. Verstoppertje | Iedereen tikt een verstopplek aan op de kaart. Daarna 5 minuten zoeken: tik waar je iemand vermoedt. 200 punten per gevonden persoon. |
-| 6. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
+| 5. Ver van iedereen | Iedereen kiest een plek op het land op een draaibare wereldbol. Wie het verst van zijn dichtste buur zit, krijgt 2000 punten; de rest naar verhouding. |
+| 6. Heb je wel opgelet? | Vragen over het weekend en de hoeve. Vier vragen vullen zichzelf in: hoeveel mensen zijn er ingelogd, wat was de vorige vraag, welk team won het teamspel, wie staat er eerste. Vul zelf aan met wat er gebeurd is. |
+| 7. Ken je de familie? | 14 vragen met weetjes over de familie. |
+| 8. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
+
+### Extra's tijdens het spel
+
+- **Aftellen:** voor elke vraag telt het scherm af: 3, 2, 1.
+- **Snelste antwoord:** na elke vraag zie je wie het snelst juist was.
+- **Reeksen:** wie 3 of meer vragen na elkaar juist heeft, krijgt een vlammetje bij zijn naam.
+- **Inhalen:** in de tussenstand schuiven de namen van hun oude naar hun nieuwe plaats.
+- **Reacties:** tussen de vragen kunnen spelers op hun gsm een emoji sturen die over het grote scherm zweeft.
+- **Opmerking na een vraag:** zet `note: 'tekst'` bij een vraag en die tekst komt groot op het scherm na het antwoord.
 
 Punten tellen altijd bij; er gaan nooit punten af.
-
-### Eigen kaart voor Verstoppertje
-
-Zet een afbeelding van het gebied (bv. een schermafbeelding van Google Maps) in de map `media`
-met de naam **`gebied.jpg`**. Zolang die er niet is, wordt de kaart van België gebruikt.
 
 ### IQ-puzzels aanpassen
 

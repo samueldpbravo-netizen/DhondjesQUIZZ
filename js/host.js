@@ -24,7 +24,10 @@
 (async function () {
   const PIN_KEY = 'quiz-host-pin';
   const DYN_KEY = 'quiz-host-dyn';
-  const TIMED = ['whois-write', 'hide-place', 'hide-seek', 'iq-play'];
+  const TIMED = ['whois-write', 'hide-place', 'hide-seek', 'iq-play', 'globe-pick'];
+  const RES_KEY = 'quiz-host-resolved';
+  const ASKED_KEY = 'quiz-host-asked';
+  const REACTIONS = ['😂', '🎉', '😱', '👏', '🔥', '❤️'];
   let pin = null;
   let game = {};
   let lastPhaseKey = '';
@@ -39,12 +42,20 @@
   let dialogId = null;
   let opened = false;
   let dyn = null; // de vragen van "Wie is het?", gemaakt uit de hints
+  let resolved = null; // de laatst ingevulde 'dynamic'-vraag
+  let asked = []; // teksten van de vragen die al gesteld zijn
+  let explainKey = '';
+  let hostGlobe = null;
+  let lastOrder = []; // volgorde van de vorige tussenstand
+  const seenReact = {};
   const known = new Set();
   const iqEls = new Map();
   const timer = { started: false, timeup: false, lastSec: null, answers: 0, grouped: 0 };
 
   try {
     dyn = JSON.parse(sessionStorage.getItem(DYN_KEY));
+    resolved = JSON.parse(sessionStorage.getItem(RES_KEY));
+    asked = JSON.parse(sessionStorage.getItem(ASKED_KEY)) || [];
   } catch (e) {}
 
   const players = () => game.players || {};
@@ -58,7 +69,8 @@
   const byName = (a, b) => nameOf(a).localeCompare(nameOf(b));
 
   $('#quizTitle').textContent = QUIZ.title;
-  $('#curtainTitle').textContent = QUIZ.title;
+  letters($('#curtainTitle'), QUIZ.title);
+  $('#curtainSub').textContent = QUIZ.subtitle || '';
   document.title = QUIZ.title + ' – Host';
 
   // ---------- Startscherm, geluid en muziek ----------
@@ -121,6 +133,7 @@
 
   Store.on(path(), (g) => {
     game = g || {};
+    handleReactions();
     render();
   });
   setInterval(onTick, 100);
@@ -150,7 +163,7 @@
   $('#newGame').onclick = () => {
     if (!confirm('Een nieuw spel starten? Het huidige spel stopt.')) return;
     sessionStorage.removeItem(PIN_KEY);
-    sessionStorage.removeItem(DYN_KEY);
+    [DYN_KEY, RES_KEY, ASKED_KEY].forEach((k) => sessionStorage.removeItem(k));
     location.reload();
   };
 
@@ -219,10 +232,17 @@
     Store.update(path(), upd);
   };
 
+  // Eerst de uitlegpagina, dan pas de ronde zelf.
+  function explainRound(round, i) {
+    if (!round.explain || !round.explain.length) return startRound(round);
+    Store.set(path('state'), baseState(round, 'explain', { num: i + 1, steps: round.explain }));
+  }
+
   function startRound(round) {
     if (round.kind === 'whois') startWhois(round);
     else if (round.kind === 'teams') startTeams(round);
     else if (round.kind === 'hide') startHide(round);
+    else if (round.kind === 'globe') startGlobe(round);
     else if (round.kind === 'iq') startIq(round);
     else startQuestion(round, 0);
   }
@@ -232,7 +252,22 @@
   // ================= VRAGEN =================
   // Stuurt een vraag naar iedereen (zonder het antwoord).
   function startQuestion(round, index) {
-    const q = round.questions[index];
+    let q = round.questions[index];
+    if (q.dynamic) {
+      q = resolveDynamic(q);
+      if (!q) {
+        // Deze vraag kan nu niet gesteld worden: overslaan.
+        if (index + 1 < round.questions.length) return startQuestion(round, index + 1);
+        return Store.update(path(), { ['played/' + round.id]: true, state: { phase: 'select', qn: state().qn || 0 } });
+      }
+      resolved = { key: round.id + ':' + index, q };
+      sessionStorage.setItem(RES_KEY, JSON.stringify(resolved));
+    }
+    if (q.type !== 'who') {
+      asked.push(q.text);
+      asked = asked.slice(-80);
+      sessionStorage.setItem(ASKED_KEY, JSON.stringify(asked));
+    }
     const type = q.type || 'choice';
     const pub = { type, text: q.text, media: q.media || null, duration: q.duration || DEFAULT_DURATION };
     if (type === 'choice') pub.options = q.options;
@@ -264,10 +299,51 @@
     });
   }
 
+  // Vragen die zichzelf invullen op het moment dat ze gesteld worden.
+  function resolveDynamic(q) {
+    const ps = players();
+    const count = Object.keys(ps).length;
+    const base = { duration: q.duration || 20, note: q.note || null };
+    if (q.dynamic === 'playerCount') {
+      return {
+        ...base,
+        type: 'number',
+        text: q.text || 'Hoeveel mensen zijn er op dit moment ingelogd in deze quiz?',
+        correct: count,
+        tolerance: q.tolerance || Math.max(3, Math.round(count * 0.5))
+      };
+    }
+    if (q.dynamic === 'previousQuestion') {
+      const prev = asked[asked.length - 1];
+      if (!prev) return null;
+      const all = QUIZ.rounds.flatMap((r) => (r.questions || []).filter((x) => x.text).map((x) => x.text));
+      const older = shuffled(asked.slice(0, -1).filter((t) => t !== prev));
+      const pool = [...new Set([...older.slice(0, 2), ...shuffled(all)])].filter((t) => t !== prev).slice(0, 3);
+      if (pool.length < 2) return null;
+      const options = shuffled([prev, ...pool]);
+      return { ...base, type: 'choice', text: q.text || 'Wat was de vorige vraag?', options, correct: options.indexOf(prev) };
+    }
+    if (q.dynamic === 'leader') {
+      const r = buildRanking(ps, scores(), {}).individuals;
+      if (r.length < 2 || !r[0].total || r[0].total === r[1].total) return null;
+      const options = shuffled(r.slice(0, 4).map((x) => x.name));
+      return { ...base, type: 'choice', text: q.text || 'Wie staat er op dit moment op de eerste plaats?', options, correct: options.indexOf(r[0].name) };
+    }
+    if (q.dynamic === 'teamWinner') {
+      const f = game.facts && game.facts.teamWinner;
+      if (!f) return null;
+      const options = [...f.names, 'Het was gelijkspel'];
+      return { ...base, type: 'choice', text: q.text || 'Welk team won het teamspel?', options, correct: f.winner - 1 };
+    }
+    return null;
+  }
+
   function currentQuestion() {
     const s = state();
     const round = findRound(s.roundId);
-    return round && round.questions ? round.questions[s.qIndex] : null;
+    const raw = round && round.questions ? round.questions[s.qIndex] : null;
+    if (raw && raw.dynamic) return resolved && resolved.key === s.roundId + ':' + s.qIndex ? resolved.q : null;
+    return raw;
   }
 
   function solutionOf(q) {
@@ -296,12 +372,13 @@
     const round = findRound(s.roundId);
     const max = q.maxPoints || round.maxPoints || 1000;
     const answers = (game.answers && game.answers['q' + s.qn]) || {};
-    const upd = { 'state/phase': 'reveal', 'state/solution': solutionOf(q) };
+    const upd = { 'state/phase': 'reveal', 'state/solution': solutionOf(q), 'state/note': q.note || null };
+    const streakOf = (id) => (scores()[id] && scores()[id].streak) || 0;
     for (const id of Object.keys(players())) {
       const prev = (scores()[id] && scores()[id].total) || 0;
       if (q.type === 'who' && id === q.correct) {
         // Wie geraden moet worden, krijgt zelf geen punten.
-        upd['scores/' + id] = { total: prev, last: 0, lastQn: s.qn, frac: 0, answered: false, msg: 'Dat was jouw profiel!' };
+        upd['scores/' + id] = { total: prev, last: 0, lastQn: s.qn, frac: 0, answered: false, msg: 'Dat was jouw profiel!', streak: streakOf(id) };
         continue;
       }
       const a = answers[id];
@@ -314,7 +391,8 @@
         lastQn: s.qn,
         frac: res.frac,
         detail: res.detail == null ? null : res.detail,
-        answered: !!a
+        answered: !!a,
+        streak: res.frac >= 1 ? streakOf(id) + 1 : 0 // aantal juiste antwoorden op rij
       };
     }
     SFX.reveal();
@@ -346,9 +424,45 @@
     const r = buildRanking(players(), scores(), config());
     $('#boardTeamsWrap').hidden = !r.teams.length;
     renderBoard($('#boardTeams'), r.teams, 8, true);
-    renderBoard($('#boardPlayers'), r.individuals, r.teams.length ? 5 : 8, true);
+    raceBoard($('#boardPlayers'), r.individuals, r.teams.length ? 5 : 8);
     const more = s.phase === 'reveal' && s.qIndex + 1 < s.qTotal;
     $('#nextBtn .plaque-text').textContent = more ? 'Volgende vraag' : 'Einde ronde';
+  }
+
+  // Tussenstand waarbij je ziet wie wie inhaalt: de rijen starten op hun oude plaats
+  // en schuiven dan naar hun nieuwe plaats.
+  function raceBoard(container, rows, limit) {
+    const show = rows.slice(0, limit);
+    const oldPos = new Map(lastOrder.map((id, i) => [id, i]));
+    renderBoard(container, show, limit, true);
+    const els = [...container.children];
+    const step = els[0] ? els[0].offsetHeight + 7 : 0;
+    els.forEach((el, i) => {
+      const row = show[i];
+      const sc = scores()[row.id] || {};
+      const nameEl = el.querySelector('.board-name');
+      if (sc.streak >= 3) nameEl.append(h('span', { class: 'streak' }, ' 🔥' + sc.streak));
+      if (!oldPos.has(row.id)) return;
+      const was = oldPos.get(row.id);
+      const delta = was - i;
+      if (delta) nameEl.append(h('span', { class: 'delta ' + (delta > 0 ? 'up' : 'down') }, (delta > 0 ? '▲' : '▼') + Math.abs(delta)));
+      el.classList.remove('slide');
+      el.style.animation = 'none';
+      const from = Math.min(was, limit) - i;
+      if (!from) return;
+      el.style.transform = `translateY(${from * step}px)`;
+      if (was >= limit) el.style.opacity = 0;
+      setTimeout(() => {
+        el.style.transition = 'transform 1.1s cubic-bezier(0.3, 1.2, 0.4, 1), opacity 0.6s';
+        el.style.transform = '';
+        el.style.opacity = 1;
+        if (delta > 0) {
+          el.classList.add('overtake');
+          SFX.pop();
+        }
+      }, 1200);
+    });
+    lastOrder = rows.map((r) => r.id);
   }
 
   function nextStep() {
@@ -391,7 +505,8 @@
         frac: r.frac == null ? (pts > 0 ? 1 : 0) : r.frac,
         detail: r.detail == null ? null : r.detail,
         answered: r.answered !== false,
-        msg: r.msg || null
+        msg: r.msg || null,
+        streak: (scores()[id] && scores()[id].streak) || 0
       };
     }
     return upd;
@@ -472,6 +587,7 @@
       };
     });
     upd.state = baseState(round, 'gameresult', { qn, game: 'teams', winner, title: names[winner - 1] + ' wint!' });
+    upd['facts/teamWinner'] = { winner, names };
     SFX.reveal();
     setTimeout(() => Store.update(path(), upd), 650);
   }
@@ -511,6 +627,57 @@
       return { pts: n * (round.findPoints || 200), frac: n ? 1 : 0, detail: n, msg: n + (n === 1 ? ' persoon gevonden' : ' personen gevonden') };
     });
     upd.state = baseState(round, 'gameresult', { qn, game: 'hide', map: round.map, title: 'Hier zat iedereen verstopt' });
+    SFX.reveal();
+    setTimeout(() => Store.update(path(), upd), 650);
+  }
+
+  // ================= VER VAN IEDEREEN (wereldbol) =================
+  function startGlobe(round) {
+    Store.update(path(), {
+      globe: null,
+      state: baseState(round, 'globe-pick', { startedAt: Store.now(), duration: round.seconds || 60 })
+    });
+  }
+  function globePicks() {
+    const all = (game.globe && game.globe.picks) || {};
+    const out = {};
+    for (const id of Object.keys(all)) if (players()[id]) out[id] = all[id];
+    return out;
+  }
+  // Voor elke speler: de afstand tot de dichtste andere speler.
+  function globeNearest() {
+    const picks = globePicks();
+    const ids = Object.keys(picks);
+    const out = {};
+    for (const id of ids) {
+      let best = null;
+      for (const o of ids) {
+        if (o === id) continue;
+        const km = distanceKm(picks[id], picks[o]);
+        if (!best || km < best.km) best = { km, id: o };
+      }
+      out[id] = best || { km: 20000, id: null };
+    }
+    return out;
+  }
+  function finishGlobe() {
+    const s = state();
+    const round = baseRound(s.roundId);
+    const qn = (s.qn || 0) + 1;
+    const near = globeNearest();
+    const top = Math.max(1, ...Object.values(near).map((n) => n.km));
+    const max = round.maxPoints || 2000;
+    const upd = awardAll(qn, (id) => {
+      const n = near[id];
+      if (!n) return { pts: 0, frac: 0, answered: false, msg: 'Je koos geen plek' };
+      return {
+        pts: (max * n.km) / top,
+        frac: n.km >= top ? 1 : 0.5,
+        detail: Math.round(n.km),
+        msg: n.id ? `Dichtste buur: ${nameOf(n.id)}, op ${fmt(Math.round(n.km))} km` : 'Je was de enige op de wereldbol'
+      };
+    });
+    upd.state = baseState(round, 'gameresult', { qn, game: 'globe', title: 'Wie zat het verst van iedereen?' });
     SFX.reveal();
     setTimeout(() => Store.update(path(), upd), 650);
   }
@@ -574,37 +741,24 @@
   // ---------- Timer ----------
   function onTick() {
     const s = state();
-    const intro = $('#intro');
     const now = Store.now();
     if (s.phase === 'question') {
       const dur = s.question.duration;
-      if (now < s.startedAt) {
-        if (intro.hidden) {
-          $('#introText').textContent = (s.question.label || 'Vraag') + ' ' + (s.qIndex + 1);
-          $('#introSub').textContent = s.roundName;
-          intro.hidden = false;
-        }
+      if (introTick(s.startedAt - now, (s.question.label || 'Vraag') + ' ' + (s.qIndex + 1), s.roundName)) {
         $('#timer').textContent = dur;
         $('#fuse').style.width = '100%';
         return;
       }
-      intro.hidden = true;
       countdown(dur - (now - s.startedAt) / 1000, dur, $('#timer'), $('#timerBox'), $('#revealBtn'), 5, false);
       $('#fuse').style.width = Math.max(0, ((dur - (now - s.startedAt) / 1000) / dur) * 100) + '%';
     } else if (TIMED.includes(s.phase)) {
-      if (now < s.startedAt) {
-        if (intro.hidden) {
-          $('#introText').textContent = s.intro || s.roundName;
-          $('#introSub').textContent = s.roundName;
-          intro.hidden = false;
-        }
+      if (introTick(s.startedAt - now, s.intro || s.roundName, s.roundName)) {
         $('#gTimer').textContent = clock(s.duration);
         return;
       }
-      intro.hidden = true;
       countdown(s.duration - (now - s.startedAt) / 1000, s.duration, $('#gTimer'), $('#gTimerBox'), $('#gBtn'), 10, true);
     } else {
-      intro.hidden = true;
+      introTick(0);
     }
   }
 
@@ -643,7 +797,47 @@
     else if (s.phase === 'select') renderSelect();
     else if (s.phase === 'question' || s.phase === 'reveal') renderQuestion(s);
     else if (s.phase === 'end') renderEnd();
+    else if (s.phase === 'explain') renderExplain(s);
     else renderGame(s);
+  }
+
+  // De uitlegpagina die voor elke ronde komt.
+  function renderExplain(s) {
+    showView('v-explain');
+    const key = s.roundId + '|' + (s.qn || 0);
+    if (key === explainKey) return;
+    explainKey = key;
+    $('#exNum').textContent = 'Ronde ' + s.num;
+    letters($('#exTitle'), s.roundName);
+    $('#exSteps').replaceChildren(
+      ...(s.steps || []).map((text, i) =>
+        h('div', { class: 'ex-step', style: `animation-delay:${900 + i * 900}ms` }, plaque('div', { class: 'ex-num' }, i + 1), h('p', {}, text))
+      )
+    );
+    SFX.question();
+    (s.steps || []).forEach((_, i) => setTimeout(() => state().phase === 'explain' && SFX.pop(), 900 + i * 900));
+  }
+  $('#exBtn').onclick = () => {
+    const s = state();
+    if (s.phase === 'explain') startRound(baseRound(s.roundId));
+  };
+
+  // Emoji-reacties van de spelers zweven over het grote scherm.
+  function handleReactions() {
+    for (const [id, v] of Object.entries(game.reactions || {})) {
+      if (!v || seenReact[id] === v.t) continue;
+      const fresh = Store.now() - v.t < 6000;
+      seenReact[id] = v.t;
+      if (!fresh || !players()[id] || !REACTIONS.includes(v.e)) continue;
+      const el = h(
+        'div',
+        { class: 'react-float', style: `left:${6 + Math.random() * 86}%` },
+        h('span', { class: 'react-emoji' }, v.e),
+        h('span', { class: 'react-name' }, nameOf(id))
+      );
+      $('#reactions').append(el);
+      setTimeout(() => el.remove(), 4300);
+    }
   }
 
   function renderLobby() {
@@ -734,7 +928,7 @@
               disabled: !n,
               onclick: () => {
                 if (done && !confirm('Deze ronde is al gespeeld. Opnieuw spelen?')) return;
-                startRound(round);
+                explainRound(round, i);
               }
             },
             `${i + 1}. ${round.name}`,
@@ -950,6 +1144,12 @@
       fill(out, h('p', { class: 'hint' }, `${full} van de ${ids.length} helemaal juist`));
       sparkTarget = list;
     }
+    // Wie was het snelst juist?
+    const right = ids.filter((id) => fracOf(id) >= 1).sort((a, b) => answers[a].ms - answers[b].ms);
+    if (right.length) {
+      out.append(h('p', { class: 'fastest' }, `⚡ Snelste: ${ps[right[0]].name} (${fmt(Math.round(answers[right[0]].ms / 100) / 10)} s)`));
+    }
+    if (s.note) out.append(h('p', { class: 'reveal-note' }, s.note));
     if (first && sparkTarget) FX.burstAt(sparkTarget, 90, 8);
   }
 
@@ -977,6 +1177,10 @@
     const key = s.phase + '|' + (s.qn || 0) + '|' + s.roundId;
     const first = key !== gameKey;
     gameKey = key;
+    if (first && hostGlobe) {
+      hostGlobe.destroy();
+      hostGlobe = null;
+    }
     const round = baseRound(s.roundId);
     const body = $('#gBody');
     const ps = players();
@@ -1066,6 +1270,24 @@
       const all = rows.reduce((sum, r) => sum + r.total, 0);
       if (all > timer.answers) SFX.blip();
       timer.answers = all;
+    } else if (s.phase === 'globe-pick') {
+      if (first) {
+        setGame({
+          name: s.roundName,
+          title: 'Kies een plek op het land',
+          sub: 'Draai de wereldbol op je gsm en tik op land. Probeer zo ver mogelijk van alle anderen te zitten!',
+          btn: 'Toon de wereldbol',
+          onBtn: () => (timeOver(s) || confirm('De tijd is nog niet om. Toch stoppen?')) && finishGlobe(),
+          timer: true
+        });
+        hostGlobe = Globe.create({ autoRotate: true, speed: 0.02 });
+        fill(body, h('div', { class: 'globe-wrap' }, hostGlobe.el));
+      }
+      const n = Object.keys(globePicks()).length;
+      $('#gFoot').textContent = `${n} / ${total} gekozen`;
+      if (n > timer.answers) SFX.blip();
+      timer.answers = n;
+      if (total && n >= total) $('#gBtn').classList.add('ready');
     } else if (s.phase === 'iq-group' || s.phase === 'iq-play') {
       const playing = s.phase === 'iq-play';
       if (first) {
@@ -1116,6 +1338,31 @@
           h('div', { class: 'columns' }, h('div', { class: 'map-wrap wide-map grow' }, buildImageMap(s.map, pins)), h('div', { class: 'panel' }, h('h2', {}, 'Gevonden'), h('ol', { class: 'board compact', id: 'seekBoard' })))
         );
         renderBoard($('#seekBoard'), rows, 10);
+      } else if (s.game === 'globe') {
+        const picks = globePicks();
+        const near = globeNearest();
+        const rows = Object.keys(picks)
+          .map((id) => ({ id, name: nameOf(id), total: Math.round(near[id].km) }))
+          .sort((a, b) => b.total - a.total);
+        const win = rows[0];
+        hostGlobe = Globe.create({
+          autoRotate: true,
+          speed: 0.015,
+          lon: win ? picks[win.id].lon : 10,
+          lat: win ? Math.max(-50, Math.min(50, picks[win.id].lat)) : 20,
+          pins: rows.map((r) => ({ lat: picks[r.id].lat, lon: picks[r.id].lon, label: r.name, cls: win && r.id === win.id ? 'win' : '' }))
+        });
+        fill(
+          body,
+          h(
+            'div',
+            { class: 'columns' },
+            h('div', { class: 'globe-wrap grow' }, hostGlobe.el),
+            h('div', { class: 'panel' }, h('h2', {}, 'Afstand tot de dichtste buur (km)'), h('ol', { class: 'board compact', id: 'seekBoard' }))
+          )
+        );
+        renderBoard($('#seekBoard'), rows, 10);
+        if (win) setTimeout(() => FX.burstAt($('#gTitle'), 120, 10), 300);
       } else if (s.game === 'iq') {
         const rows = iqClusters()
           .map((c) => ({

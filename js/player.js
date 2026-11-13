@@ -8,7 +8,9 @@
   const ANS_KEY = 'quiz-player-answer';
   const HINT_KEY = 'quiz-player-hint';
   const PICK_KEY = 'quiz-player-pick';
-  const TIMED = ['whois-write', 'hide-place', 'hide-seek', 'iq-play'];
+  const TIMED = ['whois-write', 'hide-place', 'hide-seek', 'iq-play', 'globe-pick'];
+  const REACTIONS = ['😂', '🎉', '😱', '👏', '🔥', '❤️'];
+  const BUSY = ['question', 'whois-write', 'globe-pick', 'hide-place', 'hide-seek', 'iq-play', 'iq-group', 'teams-pick'];
 
   let pid = sessionStorage.getItem(ID_KEY);
   if (!pid) {
@@ -36,6 +38,10 @@
   let iq = {};
   let subs = {};
   let seek = null; // toestand van het zoeken bij verstoppertje
+  let myGlobe = null;
+  let rankBefore = null; // mijn plaats bij het vorige resultaat
+  let rankNote = '';
+  let lastReact = 0;
   const timer = { started: false, lastSec: null, timeup: false };
 
   try {
@@ -84,9 +90,33 @@
 
   setInterval(onTick, 100);
 
+  // ---------- Emoji-reacties naar het grote scherm ----------
+  $('#reactBar').replaceChildren(
+    ...REACTIONS.map((e) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'react-btn',
+          onclick: (ev) => {
+            if (!pin || Date.now() - lastReact < 1500) return;
+            lastReact = Date.now();
+            Store.set(path('reactions/' + pid), { e, t: Store.now() });
+            ev.currentTarget.classList.remove('sent');
+            void ev.currentTarget.offsetWidth;
+            ev.currentTarget.classList.add('sent');
+            buzz(20);
+          }
+        },
+        e
+      )
+    )
+  );
+
   // ---------- Stap 1: code ----------
   function showCode(message) {
     $('#playerBar').hidden = true;
+    $('#reactBar').hidden = true;
     $('#intro').hidden = true;
     showView('v-code');
     const err = $('#codeError');
@@ -239,22 +269,17 @@
     const s = state;
     const intro = $('#intro');
     if (!pin || !s) {
-      intro.hidden = true;
+      introTick(0);
       return;
     }
     const now = Store.now();
     if (s.phase === 'question') {
       const dur = s.question.duration;
-      if (now < s.startedAt) {
-        if (intro.hidden) {
-          $('#introText').textContent = (s.question.label || 'Vraag') + ' ' + (s.qIndex + 1);
-          intro.hidden = false;
-        }
+      if (introTick(s.startedAt - now, (s.question.label || 'Vraag') + ' ' + (s.qIndex + 1))) {
         $('#timer').textContent = dur;
         $('#fuse').style.width = '100%';
         return;
       }
-      intro.hidden = true;
       if (!timer.started) {
         timer.started = true;
         SFX.go();
@@ -277,15 +302,10 @@
         }
       }
     } else if (TIMED.includes(s.phase)) {
-      if (now < s.startedAt) {
-        if (intro.hidden) {
-          $('#introText').textContent = s.intro || s.roundName;
-          intro.hidden = false;
-        }
+      if (introTick(s.startedAt - now, s.intro || s.roundName)) {
         $('#gTimer').textContent = clock(s.duration);
         return;
       }
-      intro.hidden = true;
       const left = s.duration - (now - s.startedAt) / 1000;
       $('#gTimer').textContent = clock(left);
       $('#gTimerBox').classList.toggle('urgent', left <= 10 && left > 0);
@@ -297,7 +317,7 @@
         }
       }
     } else {
-      intro.hidden = true;
+      introTick(0);
     }
   }
 
@@ -327,12 +347,21 @@
       tag.style.background = team.color;
     }
 
+    $('#reactBar').hidden = BUSY.includes(s.phase);
     if (s.phase === 'lobby') renderLobby();
     else if (s.phase === 'select') showView('v-wait');
+    else if (s.phase === 'explain') renderExplain(s);
     else if (s.phase === 'question') renderQuestion(s);
     else if (s.phase === 'reveal' || s.phase === 'gameresult') renderResult(s, sc);
     else if (s.phase === 'end') renderEnd(sc, team);
     else renderGame(s);
+  }
+
+  function renderExplain(s) {
+    showView('v-explain');
+    $('#exNum').textContent = 'Ronde ' + s.num;
+    $('#exTitle').textContent = s.roundName;
+    $('#exSteps').replaceChildren(...(s.steps || []).map((t) => h('li', {}, t)));
   }
 
   function renderLobby() {
@@ -643,6 +672,27 @@
       if (!first) return;
       setGame(s.roundName, 'Zoek de anderen!', 'Tik op de kaart waar je iemand vermoedt.', true);
       startSeek(s, body);
+    } else if (s.phase === 'globe-pick') {
+      if (!first) return;
+      setGame(s.roundName, 'Kies een plek op het land', 'Sleep om te draaien, tik om te kiezen. Zo ver mogelijk van alle anderen!', true);
+      if (myGlobe) myGlobe.destroy();
+      const note = h('p', { class: 'status' }, 'Nog geen plek gekozen');
+      myGlobe = Globe.create({
+        interactive: true,
+        onPick: (lat, lon) => {
+          myGlobe.setPins([{ lat, lon, cls: 'me' }]);
+          Store.set(path('globe/picks/' + pid), { lat, lon });
+          note.textContent = 'Plek gekozen! Je mag nog veranderen.';
+          SFX.send();
+          buzz(30);
+        },
+        onMiss: () => {
+          note.textContent = 'Dat is water! Kies een plek op het land.';
+          FX.shake(note);
+          SFX.bad();
+        }
+      });
+      fill(body, h('div', { class: 'globe-wrap' }, myGlobe.el), note);
     } else if (s.phase === 'iq-group') {
       need('players');
       need('iq');
@@ -851,9 +901,15 @@
       else if (q.type === 'number' && sc.detail > 0) detail = `Je zat er ${fmt(sc.detail)} naast.`;
       else if (q.type === 'order') detail = `${sc.detail} van de ${q.items.length} op de juiste plaats.`;
     }
+    if (!isGame && scored && sc.streak >= 2) detail = `🔥 ${sc.streak} op rij! ` + detail;
     $('#resultDetail').textContent = detail;
     $('#resultAnswer').textContent = isGame ? s.title || '' : (q.type === 'who' ? 'Het was: ' : 'Het juiste antwoord: ') + solutionText(q, s.solution);
-    $('#resultRank').textContent = `Je staat op plaats ${myRank()} met ${fmt(sc.total || 0)} punten.`;
+    if (resultQn !== s.qn && scored) {
+      const rank = myRank();
+      rankNote = rankBefore && rank < rankBefore ? ` ▲ ${rankBefore - rank} ${rankBefore - rank === 1 ? 'plaats' : 'plaatsen'} gestegen!` : '';
+      rankBefore = rank;
+    }
+    $('#resultRank').textContent = `Je staat op plaats ${myRank()} met ${fmt(sc.total || 0)} punten.` + rankNote;
 
     if (resultQn !== s.qn && scored) {
       resultQn = s.qn;
