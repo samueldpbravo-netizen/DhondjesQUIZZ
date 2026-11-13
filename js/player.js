@@ -901,7 +901,8 @@
       else if (q.type === 'number' && sc.detail > 0) detail = `Je zat er ${fmt(sc.detail)} naast.`;
       else if (q.type === 'order') detail = `${sc.detail} van de ${q.items.length} op de juiste plaats.`;
     }
-    if (!isGame && scored && sc.streak >= 2) detail = `🔥 ${sc.streak} op rij! ` + detail;
+    if (!isGame && scored && sc.streak >= 2 && !q.fun) detail = `🔥 ${sc.streak} op rij! ` + detail;
+    if (!isGame && q.fun) detail = 'Deze vraag was voor de fun: geen punten.';
     $('#resultDetail').textContent = detail;
     $('#resultAnswer').textContent = isGame ? s.title || '' : (q.type === 'who' ? 'Het was: ' : 'Het juiste antwoord: ') + solutionText(q, s.solution);
     if (resultQn !== s.qn && scored) {

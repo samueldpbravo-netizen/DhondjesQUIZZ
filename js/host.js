@@ -282,6 +282,7 @@
       pub.items = items;
       pub.hint = q.hint || null;
     }
+    if (q.noPoints) pub.fun = true;
     if (type === 'who') {
       pub.label = 'Profiel';
       pub.profile = q.profile || null;
@@ -387,6 +388,7 @@
       const res = a ? judgeAnswer(q, a.v) : { frac: 0 };
       let pts = a ? calcPoints(res.frac, a.ms, s.question.duration, max) : 0;
       if (a && res.frac <= 0) pts = round.wrongPoints || 0; // troostpunten
+      if (q.noPoints) pts = 0; // vraag voor de fun
       upd['scores/' + id] = {
         total: prev + pts,
         last: pts,
@@ -394,7 +396,7 @@
         frac: res.frac,
         detail: res.detail == null ? null : res.detail,
         answered: !!a,
-        streak: res.frac >= 1 ? streakOf(id) + 1 : 0 // aantal juiste antwoorden op rij
+        streak: q.noPoints ? streakOf(id) : res.frac >= 1 ? streakOf(id) + 1 : 0 // aantal juiste antwoorden op rij
       };
     }
     SFX.reveal();
@@ -958,7 +960,7 @@
       builtQn = s.qn;
       Object.assign(timer, { started: false, timeup: false, lastSec: null, answers: 0 });
       $('#qCount').textContent = `${s.qIndex + 1} / ${s.qTotal}`;
-      $('#qRound').textContent = s.roundName;
+      $('#qRound').textContent = s.roundName + (q.fun ? ' · voor de fun, zonder punten' : '');
       $('#qText').textContent = q.text;
       const box = $('#qText').parentElement;
       box.style.animation = 'none';

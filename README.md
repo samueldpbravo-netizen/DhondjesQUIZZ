@@ -105,7 +105,7 @@ Het rondenummer op de uitlegpagina volgt die volgorde.
 | 4. Teamspel | Iedereen kiest team 1 of team 2. Jullie spelen het spel in het echt; de host klikt daarna op het winnende team. Winnaars 3000 punten, verliezers 1000. |
 | 5. Ver van iedereen | Iedereen kiest een plek op het land op een draaibare wereldbol. Wie het verst van zijn dichtste buur zit, krijgt 2000 punten; de rest naar verhouding. |
 | 6. Heb je wel opgelet? | Vragen over het weekend en de hoeve. Vier vragen vullen zichzelf in: hoeveel mensen zijn er ingelogd, wat was de vorige vraag, welk team won het teamspel, wie staat er eerste. Vul zelf aan met wat er gebeurd is. |
-| 7. Ken je de familie? | 17 vragen met weetjes over de familie. Bij twee vragen telt elk antwoord als juist (`allCorrect: true`). |
+| 7. Ken je de familie? | 21 vragen met weetjes over de familie. Zes daarvan zijn voor de fun en geven geen punten. |
 | 8. IQ-test | Spelers vormen groepjes van max. 3 (of spelen alleen). 5 minuten, 50 puzzels, overslaan mag. Iedereen puzzelt op zijn eigen gsm en krijgt het gemiddelde van zijn groepje. |
 
 ### Extra's tijdens het spel
@@ -115,6 +115,7 @@ Het rondenummer op de uitlegpagina volgt die volgorde.
 - **Reeksen:** wie 3 of meer vragen na elkaar juist heeft, krijgt een vlammetje bij zijn naam.
 - **Inhalen:** in de tussenstand schuiven de namen van hun oude naar hun nieuwe plaats.
 - **Reacties:** tussen de vragen kunnen spelers op hun gsm een emoji sturen die over het grote scherm zweeft.
+- **Vraag voor de fun:** zet `noPoints: true` bij een vraag en niemand krijgt er punten voor.
 - **Opmerking na een vraag:** zet `note: 'tekst'` bij een vraag en die tekst komt groot op het scherm na het antwoord.
 
 Punten tellen altijd bij; er gaan nooit punten af.

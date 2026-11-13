@@ -28,6 +28,7 @@
 //   'choice'    meerkeuze
 //               options: ['A', 'B', 'C', 'D'], correct: 1   (0 = eerste)
 //               allCorrect: true              (optioneel: elk antwoord telt als juist)
+//    noPoints  optioneel: true = een vraag voor de fun, niemand krijgt punten
 //
 //   'text'      zelf typen; alle antwoorden verschijnen op het grote scherm
 //               answers: ['Namen', 'Namur']   (alle goedgekeurde antwoorden;
@@ -528,15 +529,15 @@ window.QUIZ = {
           type: 'choice',
           text: 'Waar of niet waar: Aaron heeft ooit geprobeerd een basketbal op te eten.',
           options: ['Waar', 'Niet waar'],
-          correct: 1,
+          correct: 0,
           duration: 15,
-          note: 'Niet waar… voor zover we weten.'
+          note: 'Echt waar! Smakelijk, Aaron.'
         },
         {
           type: 'choice',
           text: 'Welke sport doen Jasper en Lore?',
           options: ['Handbal', 'Basket', 'Kickboksen', 'Volleybal'],
-          correct: 0,
+          correct: 3,
           duration: 15
         },
         {
@@ -550,8 +551,9 @@ window.QUIZ = {
         {
           type: 'choice',
           text: 'Wie zwemt er ondersteboven?',
-          options: ['Camil', 'Ines', 'Aaron', 'Lore'],
+          options: ['Kamiel', 'Ines', 'Aaron', 'Lore'],
           correct: 0,
+          noPoints: true,
           duration: 15
         },
         {
@@ -559,6 +561,7 @@ window.QUIZ = {
           text: 'Waar of niet waar: Ines deed een backflip van een gebouw van 4 verdiepingen.',
           options: ['Waar', 'Niet waar'],
           correct: 1,
+          noPoints: true,
           duration: 15,
           note: 'Niet waar. Niet thuis proberen!'
         },
@@ -567,6 +570,7 @@ window.QUIZ = {
           text: 'Wie heeft de luidste scheten van de familie?',
           options: ['Samuel', 'Nathan', 'Jasper', 'Isaac'],
           correct: 2,
+          noPoints: true,
           duration: 15
         },
         {
@@ -598,12 +602,46 @@ window.QUIZ = {
           duration: 20
         },
         {
+          type: 'choice',
+          text: 'Welke sport doet Anaïs?',
+          options: ['Volleybal', 'Handbal', 'Dansen', 'Basket'],
+          correct: 1,
+          duration: 15
+        },
+        {
+          type: 'number',
+          text: 'Hoeveel keer scoort Freki ongeveer per training?',
+          correct: 60,
+          tolerance: 40,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Osvaldo maakte zelf wijn. Hoe schreef hij de naam van Marc verkeerd?',
+          options: ['Marc Dont', 'Marc Dhont', "Marc D'Hondt", 'Mark Dhondt'],
+          correct: 1,
+          duration: 20,
+          note: 'Het is Dhondt, met dt!'
+        },
+        {
+          // Test of je oud bent: geen punten, elk antwoord telt.
+          type: 'choice',
+          text: 'Je belt iemand op. Hoe hou je je gsm vast?',
+          options: ['Tegen mijn oor', 'Plat voor mijn mond, op luidspreker'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Tegen je oor? Dan ben je officieel oud.'
+        },
+        {
           // Elk antwoord telt als juist; daarna komt de opdracht groot op het scherm.
           type: 'choice',
           text: 'De quizmaster heeft dringend een assistent nodig. Wie wordt het?',
           options: ['Hasse', 'Hasse', 'Hasse', 'Zeker en vast Hasse'],
           correct: 0,
           allCorrect: true,
+          noPoints: true,
           duration: 15,
           note: 'Hasse, kom maar naar voren! Jij bent vanaf nu de assistent van de quizmaster.'
         },
@@ -613,6 +651,7 @@ window.QUIZ = {
           options: ['Superleuk', 'Megaleuk', 'De beste ooit', 'Alle drie tegelijk'],
           correct: 3,
           allCorrect: true,
+          noPoints: true,
           duration: 15,
           note: 'Juist antwoord. Bedankt, Samuel!'
         }
