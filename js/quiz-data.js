@@ -173,6 +173,14 @@ window.QUIZ = {
           duration: 20
         },
         {
+          type: 'choice',
+          text: 'Welk dier heeft veel meer soorten kleurcellen in zijn ogen dan de mens?',
+          options: ['De hond', 'De koe', 'De bidsprinkhaankreeft', 'De kat'],
+          correct: 2,
+          duration: 20,
+          note: 'Wij hebben er 3, de bidsprinkhaankreeft 12 tot 16!'
+        },
+        {
           type: 'order',
           text: 'Zet deze gebeurtenissen in de juiste volgorde.',
           hint: 'van oud naar nieuw',
@@ -600,6 +608,13 @@ window.QUIZ = {
           options: ['Pereira', 'Segers', 'Felipe', 'Dhondt'],
           correct: 2,
           duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welke achternaam hoort NIET bij dit familieweekend?',
+          options: ['Segers', 'Pereira', 'Skywalker', 'Dhondt'],
+          correct: 2,
+          duration: 15
         },
         {
           type: 'choice',
