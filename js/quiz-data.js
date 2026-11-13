@@ -418,6 +418,34 @@ window.QUIZ = {
           answers: ['Ieperstraat', 'Ieperstraat 157', 'Ieper straat'],
           duration: 30
         },
+        {
+          type: 'number',
+          text: 'Welke score krijgt deze hoeve op Google? (op 5, bv. 3,9)',
+          correct: 4.6,
+          tolerance: 1.5,
+          duration: 20
+        },
+        {
+          type: 'number',
+          text: 'Hoeveel reviews heeft de hoeve ongeveer op Google?',
+          correct: 138,
+          tolerance: 120,
+          duration: 20
+        },
+        {
+          type: 'number',
+          text: 'Hoeveel kinderen hebben de eigenaars, Koen en Alexia?',
+          correct: 8,
+          tolerance: 5,
+          duration: 20
+        },
+        {
+          type: 'choice',
+          text: 'Welke dieren worden op deze hoeve gekweekt?',
+          options: ["Lama's", 'Struisvogels', 'Schapen', 'Varkens'],
+          correct: 2,
+          duration: 15
+        },
         { dynamic: 'leader' },
         {
           type: 'choice',
