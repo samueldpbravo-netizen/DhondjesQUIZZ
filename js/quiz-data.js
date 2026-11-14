@@ -302,12 +302,12 @@ window.QUIZ = {
           // Grapvraag: elk antwoord telt, niemand krijgt punten.
           type: 'choice',
           text: 'Hoe noemt oma elke spelconsole?',
-          options: ['De Nintendo', 'Dat computerspelletje', 'De pleesteesjen', 'Dat ding van de televisie'],
+          options: ['Dat bakje', 'Dat computerspelletje', 'De pleesteesjen', 'Dat ding van de televisie'],
           correct: 0,
           allCorrect: true,
           noPoints: true,
           duration: 15,
-          note: 'Voor oma is alles een Nintendo.'
+          note: 'Voor oma is alles "dat bakje".'
         },
         {
           type: 'order',
