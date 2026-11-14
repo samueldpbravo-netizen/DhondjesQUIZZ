@@ -349,12 +349,31 @@
 
     $('#reactBar').hidden = BUSY.includes(s.phase);
     if (s.phase === 'lobby') renderLobby();
-    else if (s.phase === 'select') showView('v-wait');
+    else if (s.phase === 'select') renderWait(s);
     else if (s.phase === 'explain') renderExplain(s);
     else if (s.phase === 'question') renderQuestion(s);
     else if (s.phase === 'reveal' || s.phase === 'gameresult') renderResult(s, sc);
     else if (s.phase === 'end') renderEnd(sc, team);
     else renderGame(s);
+  }
+
+  // Tussen twee rondes: telkens een ander grappig wachtzinnetje.
+  const WAIT_LINES = [
+    'De quizmaster zoekt zijn bril…',
+    'Even de punten natellen. Op de vingers.',
+    'Tijd om stiekem een koekje te pakken.',
+    'De volgende ronde wordt nog warm gehouden bij de haard.',
+    'Rek je duimen even. Het wordt spannend.',
+    'Niet spieken bij je buur. Wij zien alles.',
+    'De schaapjes buiten supporteren voor jou.',
+    'Iemand heeft de quizmaster nog een drankje beloofd.'
+  ];
+  let waitKey = null;
+  function renderWait(s) {
+    showView('v-wait');
+    if (waitKey === s.qn) return;
+    waitKey = s.qn;
+    $('#waitLine').textContent = WAIT_LINES[Math.floor(Math.random() * WAIT_LINES.length)];
   }
 
   function renderExplain(s) {

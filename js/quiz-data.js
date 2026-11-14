@@ -111,7 +111,8 @@ window.QUIZ = {
           type: 'text',
           text: 'Hoe heet het beroemde plassende beeldje in Brussel?',
           answers: ['Manneken Pis', 'Manneke Pis', 'Mannekenpis', 'Mannekepis'],
-          duration: 30
+          duration: 30,
+          note: 'Hij plast al sinds 1619 en is nog altijd niet klaar.'
         },
         {
           type: 'order',
@@ -125,14 +126,16 @@ window.QUIZ = {
           text: 'Hoeveel bollen heeft het Atomium?',
           correct: 9,
           tolerance: 5,
-          duration: 20
+          duration: 20,
+          note: 'Negen bollen, en in geen enkele mag je voetballen.'
         },
         {
           type: 'choice',
           text: 'Welke taal is géén officiële taal van België?',
           options: ['Nederlands', 'Duits', 'Engels', 'Frans'],
           correct: 2,
-          duration: 20
+          duration: 20,
+          note: 'Sorry, West-Vlaams stond er ook niet bij.'
         },
         {
           type: 'location',
@@ -181,6 +184,17 @@ window.QUIZ = {
           note: 'Wij hebben er 3, de bidsprinkhaankreeft 12 tot 16!'
         },
         {
+          // Grapvraag: elk antwoord telt, niemand krijgt punten.
+          type: 'choice',
+          text: 'Wat is de beste manier om frietjes te eten?',
+          options: ['Met mayonaise', 'Met stoofvleessaus', 'Met je vingers', 'Van het bord van iemand anders'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Van iemand anders smaken ze altijd het best.'
+        },
+        {
           type: 'order',
           text: 'Zet deze gebeurtenissen in de juiste volgorde.',
           hint: 'van oud naar nieuw',
@@ -220,7 +234,8 @@ window.QUIZ = {
           text: 'Wat betekent "GG" op het einde van een game?',
           options: ['Ga gauw', 'Good game', 'Geen genade', 'Get good'],
           correct: 1,
-          duration: 15
+          duration: 15,
+          note: 'Wordt vooral gezegd door wie gewonnen heeft.'
         },
         {
           type: 'order',
@@ -234,7 +249,19 @@ window.QUIZ = {
           text: 'Hoe heet het geld in Fortnite?',
           options: ['Robux', 'Minecoins', 'V-Bucks', 'Gems'],
           correct: 2,
-          duration: 15
+          duration: 15,
+          note: 'Nee mama, je kunt er niet mee naar de bakker.'
+        },
+        {
+          // Grapvraag: elk antwoord telt, niemand krijgt punten.
+          type: 'choice',
+          text: 'Je gsm heeft nog 1% batterij. Wat doe je?',
+          options: ['Paniek', 'Rennen naar een oplader', 'Rustig blijven', 'De oplader van iemand anders "lenen"'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Rustig blijven? Dat gelooft niemand.'
         },
         {
           type: 'text',
@@ -261,7 +288,8 @@ window.QUIZ = {
           text: 'Iemand heeft veel "rizz". Wat heeft die persoon?',
           options: ['Veel charme om iemand te versieren', 'Veel slaap nodig', 'Veel volgers', 'Veel geluk bij het gamen'],
           correct: 0,
-          duration: 20
+          duration: 20,
+          note: 'Opa had het vroeger ook. Zegt hij.'
         },
         {
           type: 'choice',
@@ -269,6 +297,17 @@ window.QUIZ = {
           options: ['TikTok', 'Twitch', 'Snapchat', 'YouTube'],
           correct: 3,
           duration: 20
+        },
+        {
+          // Grapvraag: elk antwoord telt, niemand krijgt punten.
+          type: 'choice',
+          text: 'Hoe noemt oma elke spelconsole?',
+          options: ['De Nintendo', 'Dat computerspelletje', 'De pleesteesjen', 'Dat ding van de televisie'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Voor oma is alles een Nintendo.'
         },
         {
           type: 'order',
@@ -282,7 +321,8 @@ window.QUIZ = {
           text: 'Jongeren roepen "six-seven!" (6-7). Wat betekent het?',
           options: ['Een cheatcode in Roblox', 'Eigenlijk niets, het is gewoon een meme', 'Een score in EA FC', 'Het is tijd om te eten'],
           correct: 1,
-          duration: 20
+          duration: 20,
+          note: 'Niemand weet waarom. Zij ook niet.'
         },
         {
           type: 'choice',
@@ -403,7 +443,8 @@ window.QUIZ = {
           text: 'Wat kun je op deze hoeve NIET doen?',
           options: ['Zwemmen in een vijver', 'Vissen', 'Skiën', 'Wandelen in de boomgaard'],
           correct: 2,
-          duration: 20
+          duration: 20,
+          note: 'Tenzij het heel hard sneeuwt.'
         },
         { dynamic: 'previousQuestion' },
         {
@@ -446,14 +487,27 @@ window.QUIZ = {
           text: 'Hoeveel kinderen hebben de eigenaars, Koen en Alexia?',
           correct: 8,
           tolerance: 5,
-          duration: 20
+          duration: 20,
+          note: 'Dat is bijna een volledige voetbalploeg.'
         },
         {
           type: 'choice',
           text: 'Welke dieren worden op deze hoeve gekweekt?',
           options: ["Lama's", 'Struisvogels', 'Schapen', 'Varkens'],
           correct: 2,
-          duration: 15
+          duration: 15,
+          note: 'Schone schaapjes, uiteraard.'
+        },
+        {
+          // Grapvraag: elk antwoord telt, niemand krijgt punten.
+          type: 'choice',
+          text: 'Wie heeft dit weekend het meest gegeten?',
+          options: ['Ik niet', 'Zeker ik niet', 'Degene naast mij', 'Wie dit nu voorleest'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Kijk nu allemaal even naar je buur.'
         },
         { dynamic: 'leader' },
         {
@@ -503,14 +557,16 @@ window.QUIZ = {
           text: 'Wie zette ooit een zak chips in de koelkast?',
           options: ['Bart', 'Wim', 'Robin', 'Sergio'],
           correct: 1,
-          duration: 20
+          duration: 20,
+          note: 'Lekker fris, die chips.'
         },
         {
           type: 'choice',
           text: 'Wie vergat op een familiefeest zijn eigen leeftijd?',
           options: ['Wim', 'Osvaldo', 'Bart', 'Jasper'],
           correct: 2,
-          duration: 20
+          duration: 20,
+          note: 'Bart, weet je het ondertussen weer?'
         },
         {
           type: 'choice',
@@ -600,7 +656,8 @@ window.QUIZ = {
           text: 'Welke sport doet Samuel tegenwoordig?',
           options: ['Basket', 'Geen enkele meer', 'Kickboksen', 'Handbal'],
           correct: 1,
-          duration: 15
+          duration: 15,
+          note: 'Quizzen maken is ook topsport.'
         },
         {
           type: 'choice',
@@ -610,11 +667,35 @@ window.QUIZ = {
           duration: 20
         },
         {
+          // Grapvraag: elk antwoord telt, niemand krijgt punten.
+          type: 'choice',
+          text: 'Wie is het lievelingskleinkind van oma en opa?',
+          options: ['Ik', 'Ik natuurlijk', 'Zeker en vast ik', 'Dat mogen ze niet zeggen'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Oma en opa zeggen: allemaal evenveel. Wij weten beter.'
+        },
+        {
+          // Grapvraag: elk antwoord telt, niemand krijgt punten.
+          type: 'choice',
+          text: 'Wie valt er vanavond als eerste in slaap?',
+          options: ['Een van de opa\'s', 'Degene die nu geeuwt', 'De quizmaster', 'Niemand, het is feest'],
+          correct: 0,
+          allCorrect: true,
+          noPoints: true,
+          duration: 15,
+          note: 'Wie nu geeuwt, is verdacht.'
+        },
+        {
           type: 'choice',
           text: 'Welke achternaam hoort NIET bij dit familieweekend?',
           options: ['Segers', 'Pereira', 'Skywalker', 'Dhondt'],
           correct: 2,
-          duration: 15
+          noPoints: true,
+          duration: 15,
+          note: 'Luke, ik ben niet je nonkel.'
         },
         {
           type: 'choice',
@@ -628,7 +709,8 @@ window.QUIZ = {
           text: 'Hoeveel keer scoort Freki ongeveer per training?',
           correct: 60,
           tolerance: 40,
-          duration: 20
+          duration: 20,
+          note: 'De ring heeft er schrik van.'
         },
         {
           type: 'choice',
